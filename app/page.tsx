@@ -75,134 +75,92 @@ export default function Home() {
       </header>
 
       {/* HERO */}
-      <section className="relative overflow-hidden">
-        <div className="absolute left-1/2 top-0 h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-blue-500/10 blur-[140px]" />
+<section className="relative overflow-hidden">
+  <div className="absolute left-1/2 top-0 h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-blue-500/10 blur-[140px]" />
 
-        <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-5 py-20 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:py-28">
-          <div className="relative z-10">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-sm text-white/70 backdrop-blur">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)]" />
-              A global community is waiting for you
-            </div>
+  <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-5 py-20 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:py-28">
+    <div className="relative z-10">
+      <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-sm text-white/70 backdrop-blur">
+        <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)]" />
+        A global community is waiting for you
+      </div>
 
-            <h1 className="max-w-2xl text-5xl font-black leading-[0.95] tracking-[-0.04em] sm:text-6xl lg:text-7xl">
-              Connect.
-              <br />
-              Share.
-              <br />
-              <span className="bg-gradient-to-r from-white via-white/80 to-white/35 bg-clip-text text-transparent">
-                Belong.
-              </span>
-            </h1>
+      <h1 className="max-w-2xl text-5xl font-black leading-[0.95] tracking-[-0.04em] sm:text-6xl lg:text-7xl">
+        Connect.
+        <br />
+        Share.
+        <br />
+        <span className="bg-gradient-to-r from-white via-white/80 to-white/35 bg-clip-text text-transparent">
+          Belong.
+        </span>
+      </h1>
 
-            <p className="mt-7 max-w-xl text-base leading-7 text-white/55 sm:text-lg">
-              Nikelink brings people, communities, ideas and opportunities
-              together in one connected world.
-            </p>
+      <p className="mt-7 max-w-xl text-base leading-7 text-white/55 sm:text-lg">
+        Nikelink brings people, communities, ideas and opportunities together
+        in one connected world.
+      </p>
 
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <button className="rounded-full bg-white px-7 py-3.5 font-bold text-[#050816] transition hover:-translate-y-0.5 hover:bg-white/90">
-                Get Started
-              </button>
+      <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+        <button className="rounded-full bg-white px-7 py-3.5 font-bold text-[#050816] transition hover:-translate-y-0.5 hover:bg-white/90">
+          Get Started
+        </button>
 
-              <a
-                href="#communities"
-                className="rounded-full border border-white/15 bg-white/[0.04] px-7 py-3.5 text-center font-semibold text-white transition hover:bg-white/[0.08]"
-              >
-                Explore communities
-              </a>
-            </div>
-          </div>
+        <a
+          href="#communities"
+          className="rounded-full border border-white/15 bg-white/[0.04] px-7 py-3.5 text-center font-semibold text-white transition hover:bg-white/[0.08]"
+        >
+          Explore communities
+        </a>
+      </div>
+    </div>
 
-          {/* GLOBAL NETWORK */
-         <div className="relative mx-auto h-[430px] w-full max-w-[600px]">
-  {/* Ambient glow */}
-  <div className="absolute left-1/2 top-1/2 h-[360px] w-[360px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-500/10 blur-[100px]" />
+    <div className="relative mx-auto h-[430px] w-full max-w-[600px]">
+      <div className="absolute left-1/2 top-1/2 h-[350px] w-[350px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-blue-300/10" />
 
-  {/* Network orbit */}
-  <div className="absolute left-1/2 top-1/2 h-[350px] w-[350px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-blue-300/10" />
+      <div className="absolute left-1/2 top-1/2 h-[280px] w-[280px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10" />
 
-  <div className="absolute left-1/2 top-1/2 h-[280px] w-[280px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10" />
+      <div className="absolute left-1/2 top-1/2 h-[210px] w-[210px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-300/10" />
 
-  <div className="absolute left-1/2 top-1/2 h-[210px] w-[210px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-300/10" />
+      <div className="absolute left-1/2 top-1/2 flex h-36 w-36 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-gradient-to-br from-blue-400/25 via-blue-500/10 to-transparent shadow-[0_0_100px_rgba(59,130,246,0.35)] backdrop-blur-xl">
+        <span className="text-6xl">🌍</span>
+      </div>
 
-  {/* Connection lines */}
-  <div className="absolute left-[12%] top-[31%] h-px w-[76%] rotate-[15deg] bg-gradient-to-r from-transparent via-blue-300/30 to-transparent" />
+      <div className="absolute left-[12%] top-[25%] flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-white/[0.08] text-lg shadow-[0_0_30px_rgba(168,85,247,0.25)] backdrop-blur-xl">
+        👩🏽
+      </div>
 
-  <div className="absolute left-[16%] top-[61%] h-px w-[68%] -rotate-[13deg] bg-gradient-to-r from-transparent via-cyan-300/25 to-transparent" />
+      <div className="absolute right-[10%] top-[27%] flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-white/[0.08] text-lg shadow-[0_0_30px_rgba(34,211,238,0.25)] backdrop-blur-xl">
+        👨🏾
+      </div>
 
-  <div className="absolute left-[29%] top-[14%] h-[70%] w-px rotate-[27deg] bg-gradient-to-b from-transparent via-white/20 to-transparent" />
+      <div className="absolute bottom-[18%] left-[20%] flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-white/[0.08] text-lg shadow-[0_0_30px_rgba(52,211,153,0.2)] backdrop-blur-xl">
+        👩🏿
+      </div>
 
-  {/* Central globe */}
-  <div className="absolute left-1/2 top-1/2 flex h-36 w-36 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-gradient-to-br from-blue-400/25 via-blue-500/10 to-transparent shadow-[0_0_100px_rgba(59,130,246,0.35)] backdrop-blur-xl">
-    <div className="absolute inset-3 rounded-full border border-white/10" />
+      <div className="absolute bottom-[15%] right-[20%] flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-white/[0.08] text-lg shadow-[0_0_30px_rgba(244,114,182,0.2)] backdrop-blur-xl">
+        👨🏻
+      </div>
 
-    <div className="text-6xl drop-shadow-[0_0_25px_rgba(96,165,250,0.8)]">
-      🌍
+      <div className="absolute left-[25%] top-[17%] h-3 w-3 rounded-full bg-blue-300 shadow-[0_0_25px_#60a5fa]" />
+
+      <div className="absolute right-[23%] top-[42%] h-3 w-3 rounded-full bg-cyan-200 shadow-[0_0_25px_#67e8f9]" />
+
+      <div className="absolute bottom-[27%] left-[34%] h-3 w-3 rounded-full bg-white shadow-[0_0_25px_white]" />
+
+      <div className="absolute bottom-[31%] right-[31%] h-3 w-3 rounded-full bg-blue-300 shadow-[0_0_25px_#60a5fa]" />
+
+      <div className="absolute left-[4%] top-[49%] rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-2 text-[10px] text-white/60 shadow-xl backdrop-blur-xl">
+        <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
+        Community online
+      </div>
+
+      <div className="absolute bottom-[39%] right-[3%] rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-2 text-[10px] text-white/60 shadow-xl backdrop-blur-xl">
+        + Connect
+      </div>
     </div>
   </div>
+</section>
 
-  {/* Community avatars */}
-  <div className="absolute left-[12%] top-[25%] flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-gradient-to-br from-pink-300/40 to-purple-500/30 text-lg shadow-[0_0_30px_rgba(168,85,247,0.25)] backdrop-blur-xl">
-    👩🏽
-  </div>
-
-  <div className="absolute right-[10%] top-[27%] flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-gradient-to-br from-blue-300/40 to-cyan-500/30 text-lg shadow-[0_0_30px_rgba(34,211,238,0.25)] backdrop-blur-xl">
-    👨🏾
-  </div>
-
-  <div className="absolute bottom-[18%] left-[20%] flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-gradient-to-br from-emerald-300/30 to-blue-500/30 text-lg shadow-[0_0_30px_rgba(52,211,153,0.2)] backdrop-blur-xl">
-    👩🏿
-  </div>
-
-  <div className="absolute bottom-[15%] right-[20%] flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-gradient-to-br from-orange-300/30 to-pink-500/30 text-lg shadow-[0_0_30px_rgba(244,114,182,0.2)] backdrop-blur-xl">
-    👨🏻
-  </div>
-
-  {/* Glowing network nodes */}
-  <div className="absolute left-[25%] top-[17%] h-3 w-3 rounded-full bg-blue-300 shadow-[0_0_25px_#60a5fa]" />
-
-  <div className="absolute right-[23%] top-[42%] h-3 w-3 rounded-full bg-cyan-200 shadow-[0_0_25px_#67e8f9]" />
-
-  <div className="absolute bottom-[27%] left-[34%] h-3 w-3 rounded-full bg-white shadow-[0_0_25px_white]" />
-
-  <div className="absolute bottom-[31%] right-[31%] h-3 w-3 rounded-full bg-blue-300 shadow-[0_0_25px_#60a5fa]" />
-
-  {/* Small floating status cards */}
-  <div className="absolute left-[4%] top-[49%] rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-2 text-[10px] text-white/60 shadow-xl backdrop-blur-xl">
-    <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
-    Community online
-  </div>
-
-  <div className="absolute right-[3%] bottom-[39%] rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-2 text-[10px] text-white/60 shadow-xl backdrop-blur-xl">
-    + Connect
-  </div>
-            {/* User nodes */}
-            {avatars.map((avatar) => (
-              <div
-                key={avatar.initials}
-                className={`absolute ${avatar.position} flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-gradient-to-br from-white/20 to-white/5 text-xs font-bold shadow-[0_0_25px_rgba(255,255,255,0.08)] backdrop-blur-xl`}
-              >
-                {avatar.initials}
-              </div>
-            ))}
-
-            {/* Glowing nodes */}
-            <div className="absolute left-[23%] top-[21%] h-2.5 w-2.5 rounded-full bg-blue-300 shadow-[0_0_20px_#60a5fa]" />
-
-            <div className="absolute right-[21%] top-[38%] h-2.5 w-2.5 rounded-full bg-white shadow-[0_0_20px_white]" />
-
-            <div className="absolute bottom-[25%] left-[30%] h-2.5 w-2.5 rounded-full bg-cyan-300 shadow-[0_0_20px_#67e8f9]" />
-
-        <div className="absolute bottom-[30%] right-[28%] h-2.5 w-2.5 rounded-full bg-blue-300 shadow-[0_0_20px_#60a5fa]" />
-
-<div className="absolute right-[3%] bottom-[39%] rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-2 text-[10px] text-white/60 shadow-xl backdrop-blur-xl">
-  + Connect
-</div>
-        </div>
-    </section>
-
-    
       {/* TRUST / STATS */}
       <section className="border-y border-white/10 bg-white/[0.015]">
         <div className="mx-auto grid max-w-7xl grid-cols-2 divide-x divide-white/10 sm:grid-cols-4">
@@ -231,7 +189,7 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="mt-14 grid gap-5 md:grid-cols-3">
+         <div className="mt-14 grid gap-5 md:grid-cols-3">
             <FeatureCard
               number="01"
               title="Connect"
