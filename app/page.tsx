@@ -196,7 +196,6 @@ export default function Home() {
 
             <div className="absolute bottom-[30%] right-[28%] h-2.5 w-2.5 rounded-full bg-blue-300 shadow-[0_0_20px_#60a5fa]" />
           </div>
-        </div>
       </section>
 
       {/* TRUST / STATS */}
