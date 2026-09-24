@@ -177,13 +177,6 @@ export default function Home() {
   <div className="absolute right-[3%] bottom-[39%] rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-2 text-[10px] text-white/60 shadow-xl backdrop-blur-xl">
     + Connect
   </div>
-  {/* Connection lines */}
-            <div className="absolute left-[18%] top-[35%] h-px w-[64%] rotate-[12deg] bg-gradient-to-r from-transparent via-white/25 to-transparent" />
-
-            <div className="absolute left-[22%] top-[55%] h-px w-[58%] -rotate-[17deg] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-
-            <div className="absolute left-[34%] top-[18%] h-[65%] w-px rotate-[25deg] bg-gradient-to-b from-transparent via-white/15 to-transparent" />
-
             {/* User nodes */}
             {avatars.map((avatar) => (
               <div
