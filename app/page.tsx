@@ -200,7 +200,6 @@ export default function Home() {
   + Connect
 </div>
         </div>
-      </div>
     </section>
 
     
