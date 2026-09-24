@@ -378,4 +378,26 @@ function FeatureCard({
         </div>
       </div>
 
-      <h3 className
+      <h3 className="mt-16 text-2xl font-bold">{title}</h3>
+
+<p className="mt-3 leading-7 text-white/45">{description}</p>
+    </div>
+  );
+}
+
+function Stat({
+  value,
+  label,
+}: {
+  value: string;
+  label: string;
+}) {
+  return (
+    <div className="px-4 py-7 text-center sm:py-9">
+      <p className="text-2xl font-black sm:text-3xl">{value}</p>
+      <p className="mt-1 text-xs uppercase tracking-widest text-white/30">
+        {label}
+      </p>
+    </div>
+  );
+}
