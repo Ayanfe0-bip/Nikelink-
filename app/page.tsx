@@ -194,12 +194,16 @@ export default function Home() {
 
             <div className="absolute bottom-[25%] left-[30%] h-2.5 w-2.5 rounded-full bg-cyan-300 shadow-[0_0_20px_#67e8f9]" />
 
-         <div className="absolute bottom-[30%] right-[28%] h-2.5 w-2.5 rounded-full bg-blue-300 shadow-[0_0_20px_#60a5fa]" />
-         +connect 
-         </div> 
-            </div> 
-            </div> 
-            </section>
+        <div className="absolute bottom-[30%] right-[28%] h-2.5 w-2.5 rounded-full bg-blue-300 shadow-[0_0_20px_#60a5fa]" />
+
+<div className="absolute right-[3%] bottom-[39%] rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-2 text-[10px] text-white/60 shadow-xl backdrop-blur-xl">
+  + Connect
+</div>
+        </div>
+      </div>
+    </section>
+
+    
       {/* TRUST / STATS */}
       <section className="border-y border-white/10 bg-white/[0.015]">
         <div className="mx-auto grid max-w-7xl grid-cols-2 divide-x divide-white/10 sm:grid-cols-4">
