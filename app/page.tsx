@@ -122,7 +122,11 @@ export default function Home() {
       <div className="absolute left-1/2 top-1/2 h-[210px] w-[210px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-300/10" />
 
       <div className="absolute left-1/2 top-1/2 flex h-36 w-36 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-gradient-to-br from-blue-400/25 via-blue-500/10 to-transparent shadow-[0_0_100px_rgba(59,130,246,0.35)] backdrop-blur-xl">
-        <span className="text-6xl">🌍</span>
+        <img
+  src="/images/nikelink-hero.svg"
+  alt="Nikelink global community network"
+  className="h-full w-full object-cover"
+ />
       </div>
 
       <div className="absolute left-[12%] top-[25%] flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-white/[0.08] text-lg shadow-[0_0_30px_rgba(168,85,247,0.25)] backdrop-blur-xl">
