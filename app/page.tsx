@@ -188,7 +188,6 @@ export default function Home() {
 
       <div className="absolute bottom-[39%] right-[3%] rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-2 text-[10px] text-white/60 shadow-xl backdrop-blur-xl">
         + Connect
-      </div>
     </div>
   </div>
 </section>
