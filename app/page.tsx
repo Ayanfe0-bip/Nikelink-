@@ -113,21 +113,65 @@ export default function Home() {
         </a>
       </div>
     </div>
+<div className="relative mx-auto h-[430px] w-full max-w-[600px] overflow-hidden">
 
-    <div className="relative mx-auto h-[430px] w-full max-w-[600px]">
-      <div className="absolute left-1/2 top-1/2 h-[350px] w-[350px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-blue-300/10" />
+  {/* Ambient glow */}
+  <div className="absolute left-1/2 top-1/2 h-[330px] w-[330px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-600/10 blur-[90px]" />
 
-      <div className="absolute left-1/2 top-1/2 h-[280px] w-[280px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10" />
+  <div className="absolute left-1/2 top-1/2 h-[250px] w-[250px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-400/5 blur-[55px]" />
 
-      <div className="absolute left-1/2 top-1/2 h-[210px] w-[210px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-300/10" />
+  {/* Orbital rings */}
+  <div className="absolute left-1/2 top-1/2 h-[360px] w-[360px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-blue-400/10" />
 
-      <div className="absolute left-1/2 top-1/2 flex h-36 w-36 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-gradient-to-br from-blue-400/25 via-blue-500/10 to-transparent shadow-[0_0_100px_rgba(59,130,246,0.35)] backdrop-blur-xl">
-        <img
-  src="/images/nikelink-hero.svg"
-  alt="Nikelink global community network"
-  className="h-full w-full object-cover"
- />
-      </div>
+  <div className="absolute left-1/2 top-1/2 h-[300px] w-[300px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-300/10" />
+
+  <div className="absolute left-1/2 top-1/2 h-[220px] w-[220px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10" />
+
+  {/* Network lines */}
+  <div className="absolute left-[16%] top-[30%] h-px w-[68%] rotate-[18deg] bg-gradient-to-r from-transparent via-blue-300/30 to-transparent" />
+
+  <div className="absolute left-[20%] top-[61%] h-px w-[62%] -rotate-[16deg] bg-gradient-to-r from-transparent via-cyan-300/25 to-transparent" />
+
+  <div className="absolute left-[30%] top-[20%] h-[65%] w-px rotate-[35deg] bg-gradient-to-b from-transparent via-blue-300/20 to-transparent" />
+
+  {/* Central network sphere */}
+  <div className="absolute left-1/2 top-1/2 flex h-[170px] w-[170px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-blue-300/20 bg-gradient-to-br from-blue-500/20 via-blue-600/5 to-cyan-400/10 shadow-[0_0_100px_rgba(37,99,235,0.25)] backdrop-blur-xl">
+
+    <div className="absolute inset-[18px] rounded-full border border-white/10" />
+
+    <div className="absolute inset-[35px] rounded-full border border-cyan-300/10" />
+
+    <div className="h-16 w-16 rounded-full bg-blue-400/10 shadow-[0_0_70px_rgba(59,130,246,0.5)]" />
+
+    <div className="absolute h-3 w-3 rounded-full bg-cyan-200 shadow-[0_0_25px_rgba(103,232,249,1)]" />
+
+  </div>
+
+  {/* Connection nodes */}
+  <div className="absolute left-[15%] top-[24%] h-3 w-3 rounded-full bg-blue-300 shadow-[0_0_22px_rgba(96,165,250,0.9)]" />
+
+  <div className="absolute right-[14%] top-[28%] h-3 w-3 rounded-full bg-cyan-200 shadow-[0_0_22px_rgba(103,232,249,0.9)]" />
+
+  <div className="absolute bottom-[22%] left-[22%] h-3 w-3 rounded-full bg-indigo-300 shadow-[0_0_22px_rgba(129,140,248,0.9)]" />
+
+  <div className="absolute bottom-[18%] right-[23%] h-3 w-3 rounded-full bg-blue-200 shadow-[0_0_22px_rgba(147,197,253,0.9)]" />
+
+  <div className="absolute left-[31%] top-[14%] h-2 w-2 rounded-full bg-white shadow-[0_0_18px_white]" />
+
+  <div className="absolute right-[31%] bottom-[31%] h-2 w-2 rounded-full bg-cyan-200 shadow-[0_0_18px_rgba(103,232,249,0.9)]" />
+
+  {/* Status cards */}
+  <div className="absolute left-[2%] top-[48%] rounded-2xl border border-white/10 bg-[#07101f]/80 px-4 py-2.5 text-[10px] text-white/60 shadow-2xl backdrop-blur-xl">
+    <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
+    Global network active
+  </div>
+
+  <div className="absolute bottom-[31%] right-[1%] rounded-2xl border border-white/10 bg-[#07101f]/80 px-4 py-2.5 text-[10px] text-white/60 shadow-2xl backdrop-blur-xl">
+    <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-cyan-300 shadow-[0_0_10px_rgba(103,232,249,0.9)]" />
+    Connecting people
+  </div>
+
+</div>
       
       <div className="absolute left-[25%] top-[17%] h-3 w-3 rounded-full bg-blue-300 shadow-[0_0_25px_#60a5fa]" />
 
@@ -138,7 +182,7 @@ export default function Home() {
       <div className="absolute bottom-[31%] right-[31%] h-3 w-3 rounded-full bg-blue-300 shadow-[0_0_25px_#60a5fa]" />
 
       <div className="absolute left-[4%] top-[49%] rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-2 text-[10px] text-white/60 shadow-xl backdrop-blur-xl">
-        <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
+        <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-fuerald-400" />
         Community online
       </div>
 
