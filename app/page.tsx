@@ -529,59 +529,137 @@ export default function Home() {
 
   </div>
 </section>
+{/* SOCIAL PREVIEW */}
+<section className="relative overflow-hidden border-b border-blue-300/10">
+  <div className="pointer-events-none absolute left-0 top-1/3 h-80 w-80 rounded-full bg-blue-500/10 blur-[130px]" />
+  <div className="pointer-events-none absolute right-0 top-1/4 h-80 w-80 rounded-full bg-cyan-400/5 blur-[130px]" />
 
-      {/* SOCIAL PREVIEW */}
-      <section className="border-b border-white/10">
-        <div className="mx-auto grid max-w-7xl gap-14 px-5 py-24 sm:px-6 lg:grid-cols-2 lg:items-center">
+  <div className="relative mx-auto grid max-w-7xl gap-14 px-5 py-24 sm:px-6 lg:grid-cols-2 lg:items-center lg:py-28">
+
+    {/* LEFT CONTENT */}
+    <div>
+      <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-blue-300/15 bg-blue-500/10 px-3.5 py-2 text-xs font-bold uppercase tracking-[0.2em] text-blue-200">
+        <span className="h-1.5 w-1.5 rounded-full bg-cyan-300 shadow-[0_0_12px_rgba(103,232,249,0.9)]" />
+        Your social world
+      </div>
+
+      <h2 className="text-4xl font-black tracking-[-0.03em] text-white sm:text-5xl lg:text-6xl">
+        Share what
+        <br />
+        <span className="bg-gradient-to-r from-white via-blue-100 to-cyan-300 bg-clip-text text-transparent">
+          matters.
+        </span>
+      </h2>
+
+      <p className="mt-6 max-w-xl text-base leading-7 text-blue-100/55 sm:text-lg sm:leading-8">
+        Your ideas, moments, conversations and communities —
+        all in one connected experience.
+      </p>
+
+      <div className="mt-8 flex flex-wrap gap-3">
+        <span className="rounded-full border border-blue-300/15 bg-blue-500/10 px-4 py-2 text-xs font-semibold text-blue-200/70">
+          Ideas
+        </span>
+
+        <span className="rounded-full border border-cyan-300/15 bg-cyan-400/10 px-4 py-2 text-xs font-semibold text-cyan-200/70">
+          Conversations
+        </span>
+
+        <span className="rounded-full border border-violet-300/15 bg-violet-500/10 px-4 py-2 text-xs font-semibold text-violet-200/70">
+          Communities
+        </span>
+      </div>
+    </div>
+
+    {/* SOCIAL FEED CARD */}
+    <div className="relative">
+      <div className="absolute -inset-8 rounded-[3rem] bg-blue-500/10 blur-[70px]" />
+
+      <div className="relative overflow-hidden rounded-[2rem] border border-blue-300/15 bg-blue-950/40 p-5 shadow-2xl shadow-blue-950/40 backdrop-blur-xl">
+
+        {/* Feed header */}
+        <div className="flex items-center justify-between border-b border-white/10 pb-5">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.25em] text-white/35">
-              Your social world
+            <p className="text-sm font-black text-white">
+              Nikelink Feed
             </p>
-
-            <h2 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">
-              Share what matters.
-            </h2>
-
-            <p className="mt-6 max-w-xl text-lg leading-8 text-white/50">
-              Your ideas, moments, conversations and communities — all in one
-              connected experience.
+            <p className="mt-1 text-xs text-blue-200/40">
+              Discover what people are sharing
             </p>
           </div>
 
-          <div className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-5 shadow-2xl shadow-black/30">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-xs font-bold">
-                AO
-              </div>
-
-              <div>
-                <p className="text-sm font-bold">Ayo Oladipo</p>
-                <p className="text-xs text-white/35">2h · Technology</p>
-              </div>
-
-              <span className="ml-auto text-white/30">•••</span>
-            </div>
-
-            <p className="mt-5 leading-7 text-white/75">
-              Building something new and connecting with amazing people along
-              the way. 🌍
-            </p>
-
-            <div className="mt-5 h-44 rounded-2xl border border-white/10 bg-gradient-to-br from-blue-500/20 via-white/[0.03] to-cyan-400/10" />
-
-            <div className="mt-5 flex items-center gap-6 text-sm text-white/40">
-              <span>♡ 248</span>
-              <span>◯ 36 comments</span>
-              <span>↗ Share</span>
-            </div>
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-blue-300/15 bg-blue-500/10 text-blue-200">
+            ✦
           </div>
         </div>
-      </section>
 
+        {/* Post */}
+        <div className="pt-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-blue-300/20 bg-gradient-to-br from-blue-400/20 to-cyan-400/10 text-sm font-black text-blue-100">
+              N
+            </div>
+
+            <div>
+              <p className="text-sm font-bold text-white">
+                Nikelink Community
+              </p>
+              <p className="text-xs text-blue-200/35">
+                Technology · Community post
+              </p>
+            </div>
+
+            <span className="ml-auto text-blue-200/30">
+              •••
+            </span>
+          </div>
+
+          <p className="mt-5 text-sm leading-7 text-blue-100/75 sm:text-base">
+            Building something new becomes more meaningful when
+            you can share the journey, exchange ideas and connect
+            with people along the way.
+          </p>
+
+          {/* Visual post area */}
+          <div className="relative mt-5 h-48 overflow-hidden rounded-2xl border border-blue-300/10 bg-gradient-to-br from-blue-600/20 via-blue-950/60 to-cyan-400/10">
+            <div className="absolute left-1/2 top-1/2 h-32 w-32 -translate-x-1/2 -translate-y-1/2 rounded-full border border-blue-300/20" />
+            <div className="absolute left-1/2 top-1/2 h-20 w-20 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-300/20" />
+
+            <div className="absolute left-1/2 top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-lg font-black text-white shadow-[0_0_40px_rgba(37,99,235,0.35)]">
+              N
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="mt-5 flex items-center justify-between border-t border-white/10 pt-4">
+            <div className="flex items-center gap-5 text-xs font-medium text-blue-200/45">
+              <span className="transition hover:text-cyan-300">
+                ♡ Like
+              </span>
+
+              <span className="transition hover:text-cyan-300">
+                ◯ Comment
+              </span>
+
+              <span className="transition hover:text-cyan-300">
+                ↗ Share
+              </span>
+            </div>
+
+            <span className="text-xs text-blue-200/30">
+              Community
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
       {/* ABOUT / CTA */}
       <section id="about">
         <div className="mx-auto max-w-5xl px-5 py-28 text-center sm:px-6">
-          <div className="mx-auto h-16 w-16 rounded-2xl bg-white p-1 shadow-[0_0_60px_rgba(255,255,255,0.12)]">
+          <div className="mx-autow-16 rounded-2xl bg-white p-1 shadow-[0_0_60px_rgba(255,255,255,0.12)]">
             <div className="flex h-full w-full items-center justify-center rounded-xl bg-[#050816] text-2xl font-black">
               N
             </div>
