@@ -240,16 +240,56 @@ export default function Home() {
   </div>
 </section>
 
-      {/* TRUST / STATS */}
-      <section className="border-y border-white/10 bg-white/[0.015]">
-        <div className="mx-auto grid max-w-7xl grid-cols-2 divide-x divide-white/10 sm:grid-cols-4">
-          <Stat value="Global" label="Community" />
-          <Stat value="24/7" label="Connection" />
-          <Stat value="∞" label="Possibilities" />
-          <Stat value="1" label="Connected World" />
-        </div>
-      </section>
+  {/* TRUST / STATS */}
+<section className="relative overflow-hidden border-y border-blue-300/10 bg-blue-950/20">
+  {/* Section glow */}
+  <div className="absolute left-1/4 top-0 h-40 w-72 rounded-full bg-blue-500/10 blur-[100px]" />
+  <div className="absolute right-1/4 bottom-0 h-40 w-72 rounded-full bg-cyan-400/5 blur-[100px]" />
 
+  <div className="relative mx-auto grid max-w-7xl grid-cols-2 divide-x divide-y divide-white/10 px-5 sm:grid-cols-4 sm:divide-y-0 sm:px-6">
+
+    {/* Stat 1 */}
+    <div className="px-5 py-8 text-center sm:px-8 sm:py-10">
+      <div className="text-2xl font-black tracking-tight text-white sm:text-3xl">
+        Global
+      </div>
+      <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-blue-200/55">
+        Community
+      </p>
+    </div>
+
+    {/* Stat 2 */}
+    <div className="px-5 py-8 text-center sm:px-8 sm:py-10">
+      <div className="text-2xl font-black tracking-tight text-white sm:text-3xl">
+        One
+      </div>
+      <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-blue-200/55">
+        Connected world
+      </p>
+    </div>
+
+    {/* Stat 3 */}
+    <div className="px-5 py-8 text-center sm:px-8 sm:py-10">
+      <div className="text-2xl font-black tracking-tight text-white sm:text-3xl">
+        Ideas
+      </div>
+      <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-blue-200/55">
+        Worth sharing
+      </p>
+    </div>
+
+    {/* Stat 4 */}
+    <div className="px-5 py-8 text-center sm:px-8 sm:py-10">
+      <div className="text-2xl font-black tracking-tight text-white sm:text-3xl">
+        Endless
+      </div>
+      <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-blue-200/55">
+        Opportunities
+      </p>
+    </div>
+
+  </div>
+</section>
       {/* FEATURES */}
       <section id="features" className="border-b border-white/10">
         <div className="mx-auto max-w-7xl px-5 py-24 sm:px-6">
