@@ -419,7 +419,7 @@ export default function Home() {
 
     </div>
   </div>
-</sec>
+</section>
 {/* COMMUNITIES */}
 <section
   id="communities"
