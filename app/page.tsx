@@ -44,43 +44,91 @@ export default function Home() {
   return (
     <main className="min-h-screen overflow-hidden bg-transparent text-white">
       {/* NAVIGATION */}
-      <header className="sticky top-0 z-50 border-b border-blue-300/10 bg-[#071b5c]/70 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-6">
-          <a href="#" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-lg font-black text-[#050816] shadow-lg shadow-white/10">
-              N
-            </div>
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#071b5c]/75 backdrop-blur-xl">
+  <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6 lg:px-8">
 
-            <span className="text-xl font-bold tracking-tight">
-              Nikelink
-            </span>
-          </a>
+    {/* Nikelink Logo */}
+    <a href="#" className="flex items-center gap-3">
+      <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-blue-300/30 bg-blue-500/15 shadow-lg shadow-blue-500/20">
+        <span className="text-xl font-black text-white">N</span>
+      </div>
 
-          <nav className="hidden items-center gap-8 text-sm text-white/60 md:flex">
-            <a href="#features" className="transition hover:text-white">
-              Features
-            </a>
-            <a href="#communities" className="transition hover:text-white">
-              Communities
-            </a>
-            <a href="#about" className="transition hover:text-white">
-              About
-            </a>
-          </nav>
+      <span className="text-xl font-black tracking-tight text-white">
+        Nikelink
+      </span>
+    </a>
 
-          <button className="rounded-full bg-white px-5 py-2.5 text-sm font-bold text-[#050816] transition hover:scale-105 hover:bg-white/90">
-            Join Nikelink
-          </button>
-        </div>
-      </header>
+    {/* Desktop Navigation */}
+    <nav className="hidden items-center gap-8 md:flex">
+      <a
+        href="#"
+        className="text-sm font-medium text-white transition hover:text-cyan-300"
+      >
+        Home
+      </a>
 
+      <a
+        href="#communities"
+        className="text-sm font-medium text-blue-100 transition hover:text-cyan-300"
+      >
+        Communities
+      </a>
+
+      <a
+        href="#features"
+        className="text-sm font-medium text-blue-100 transition hover:text-cyan-300"
+      >
+        Features
+      </a>
+
+      <a
+        href="#about"
+        className="text-sm font-medium text-blue-100 transition hover:text-cyan-300"
+      >
+        About
+      </a>
+    </nav>
+
+    {/* Desktop Actions */}
+    <div className="hidden items-center gap-3 md:flex">
+      <button className="rounded-full px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10">
+        Log in
+      </button>
+
+      <button className="rounded-full bg-white px-5 py-2.5 text-sm font-bold text-[#071b5c] shadow-lg shadow-blue-950/20 transition hover:scale-105 hover:bg-cyan-100">
+        Get Started
+      </button>
+    </div>
+
+    {/* Mobile Menu Button */}
+    <button
+      className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white md:hidden"
+      aria-label="Open menu"
+    >
+      <svg
+        width="22"
+        height="22"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      >
+        <path d="M4 6h16" />
+        <path d="M4 12h16" />
+        <path d="M4 18h16" />
+      </svg>
+    </button>
+
+  </div>
+</header>  
       {/* HERO */}
 <section className="relative overflow-hidden">
   <div className="absolute left-1/2 top-0 h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-blue-500/10 blur-[140px]" />
 
   <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-5 py-20 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:py-28">
     <div className="relative z-10">
-      <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-sm text-white/70 backdrop-blur">
+      <div className-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-sm text-white/70 backdrop-blur">
         <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)]" />
         A global community is waiting for you
       </div>
