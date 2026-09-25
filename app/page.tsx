@@ -130,35 +130,15 @@ export default function Home() {
       </div>
       <div className="absolute left-[12%] top-[25%] h-14 w-14 overflow-hidden rounded-full border border-white/25 bg-white/[0.08] shadow-[0_0_30px_rgba(168,85,247,0.25)] backdrop-blur-xl">
         <img
-          src="/images/avatars/avatar-01.svg"
-          alt="Nikelink community member"
-          className="h-full w-full object-cover"
-        />
-      </div>
 
       <div className="absolute right-[10%] top-[27%] h-14 w-14 overflow-hidden rounded-full border border-white/25 bg-white/[0.08] shadow-[0_0_30px_rgba(34,211,238,0.25)] backdrop-blur-xl">
         <img
-          src="/images/avatars/avatar-02.svg"
-          alt="Nikelink community member"
-          className="h-full w-full object-cover"
-        />
-      </div>
 
-      <div className="absolute bottom-[18%] left-[20%] h-14 w-14 overflow-hidden rounded-full border border-white/25 bg-white/[0.08] shadow-[0_0_30px_rgba(52,211,153,0.2)] backdrop-blur-xl">
+    <div className="absolute bottom-[18%] left-[20%] h-14 w-14 overflow-hidden rounded-full border border-white/25 bg-white/[0.08] shadow-[0_0_30px_rgba(52,211,153,0.2)] backdrop-blur-xl">
         <img
-          src="/images/avatars/avatar-03.svg"
-          alt="Nikelink community member"
-          className="h-full w-full object-cover"
-        />
-      </div>
 
       <div className="absolute bottom-[15%] right-[20%] h-14 w-14 overflow-hidden rounded-full border border-white/25 bg-white/[0.08] shadow-[0_0_30px_rgba(244,114,182,0.2)] backdrop-blur-xl">
         <img
-          src="/images/avatars/avatar-04.svg"
-          alt="Nikelink community member"
-          className="h-full w-full object-cover"
-        />
-      </div>
 
       <div className="absolute left-[25%] top-[17%] h-3 w-3 rounded-full bg-blue-300 shadow-[0_0_25px_#60a5fa]" />
 
