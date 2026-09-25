@@ -656,32 +656,67 @@ export default function Home() {
 
   </div>
 </section>
-      {/* ABOUT / CTA */}
-      <section id="about">
-        <div className="mx-auto max-w-5xl px-5 py-28 text-center sm:px-6">
-          <div className="mx-autow-16 rounded-2xl bg-white p-1 shadow-[0_0_60px_rgba(255,255,255,0.12)]">
-            <div className="flex h-full w-full items-center justify-center rounded-xl bg-[#050816] text-2xl font-black">
-              N
-            </div>
-          </div>
+{/* ABOUT / FINAL CTA */}
+<section
+  id="about"
+  className="relative overflow-hidden border-b border-blue-300/10"
+>
+  {/* Atmospheric background */}
+  <div className="pointer-events-none absolute left-1/2 top-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-600/10 blur-[150px]" />
+  <div className="pointer-events-none absolute left-1/4 top-0 h-48 w-48 rounded-full bg-cyan-400/5 blur-[100px]" />
+  <div className="pointer-events-none absolute right-1/4 bottom-0 h-48 w-48 rounded-full bg-violet-500/5 blur-[100px]" />
 
-          <h2 className="mt-8 text-4xl font-black tracking-tight sm:text-6xl">
-            One world.
-            <br />
-            Many connections.
-          </h2>
+  <div className="relative mx-auto max-w-5xl px-5 py-28 text-center sm:px-6 lg:py-36">
 
-          <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-white/50">
-            Nikelink is being built to make discovering people, ideas and
-            communities feel natural, meaningful and global.
-          </p>
+    {/* Nikelink mark */}
+    <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[1.5rem] border border-blue-300/20 bg-blue-500/10 p-1 shadow-[0_0_70px_rgba(37,99,235,0.2)] backdrop-blur-xl">
+      <div className="flex h-full w-full items-center justify-center rounded-[1.1rem] border border-white/10 bg-blue-950/70 text-3xl font-black text-white">
+        N
+      </div>
+    </div>
 
-          <button className="mt-9 rounded-full bg-white px-8 py-4 font-bold text-[#050816] transition hover:-translate-y-0.5 hover:bg-white/90">
-            Join the Nikelink community
-          </button>
-        </div>
-      </section>
+    {/* Eyebrow */}
+    <div className="mt-8 inline-flex items-center gap-2 rounded-full border border-blue-300/15 bg-blue-500/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-blue-200">
+      <span className="h-1.5 w-1.5 rounded-full bg-cyan-300 shadow-[0_0_12px_rgba(103,232,249,0.9)]" />
+      The world is connected
+    </div>
 
+    {/* Heading */}
+    <h2 className="mt-7 text-4xl font-black tracking-[-0.04em] text-white sm:text-6xl lg:text-7xl">
+      One world.
+      <br />
+      <span className="bg-gradient-to-r from-white via-blue-100 to-cyan-300 bg-clip-text text-transparent">
+        Many connections.
+      </span>
+    </h2>
+
+    {/* Description */}
+    <p className="mx-auto mt-7 max-w-2xl text-base leading-7 text-blue-100/55 sm:text-lg sm:leading-8">
+      Nikelink is being built to make discovering people, ideas and
+      communities feel natural, meaningful and global.
+    </p>
+
+    {/* CTA */}
+    <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+      <button className="group flex items-center gap-3 rounded-full bg-white px-8 py-4 font-bold text-[#071b5c] shadow-[0_15px_50px_rgba(37,99,235,0.2)] transition duration-300 hover:-translate-y-1 hover:bg-cyan-50">
+        Join the Nikelink community
+        <span className="transition-transform duration-300 group-hover:translate-x-1">
+          →
+        </span>
+      </button>
+
+      <button className="rounded-full border border-blue-300/20 bg-blue-500/10 px-8 py-4 font-semibold text-blue-100 transition duration-300 hover:border-blue-300/40 hover:bg-blue-500/20">
+        Learn more
+      </button>
+    </div>
+
+    {/* Small supporting line */}
+    <p className="mt-7 text-xs font-medium uppercase tracking-[0.18em] text-blue-200/25">
+      Connect · Share · Belong
+    </p>
+
+  </div>
+</section>
       {/* FOOTER */}
       <footer className="border-t border-white/10">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-8 text-sm text-white/35 sm:flex-row sm:items-center sm:justify-between sm:px-6">
