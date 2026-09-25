@@ -403,8 +403,7 @@ export default function Home() {
           </div>
 
           <h3 className="mt-12 text-2xl font-black text-white">
-            Belong
-          </h3>
+            Belo          </h3>
 
           <p className="mt-3 text-sm leading-7 text-blue-100/55">
             Find communities where you feel understood and connected.
@@ -420,67 +419,116 @@ export default function Home() {
 
     </div>
   </div>
-</section>
-      {/* COMMUNITIES */}
-      <section id="communities" className="border-b border-white/10">
-        <div className="mx-auto max-w-7xl px-5 py-24 sm:px-6">
-          <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.25em] text-white/35">
-                Discover
-              </p>
+</sec>
+{/* COMMUNITIES */}
+<section
+  id="communities"
+  className="relative overflow-hidden border-b border-blue-300/10"
+>
+  {/* Ambient glow */}
+  <div className="pointer-events-none absolute left-0 top-1/3 h-80 w-80 rounded-full bg-blue-500/10 blur-[130px]" />
+  <div className="pointer-events-none absolute right-0 bottom-0 h-80 w-80 rounded-full bg-cyan-400/5 blur-[130px]" />
 
-              <h2 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">
-                Find your people.
-              </h2>
+  <div className="relative mx-auto max-w-7xl px-5 py-24 sm:px-6 lg:py-28">
 
-              <p className="mt-5 max-w-xl text-lg leading-8 text-white/50">
-                Explore communities built around the things you care about.
-              </p>
+    {/* Heading */}
+    <div className="flex flex-col justify-between gap-8 sm:flex-row sm:items-end">
+      <div>
+        <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-blue-300/15 bg-blue-500/10 px-3.5 py-2 text-xs font-bold uppercase tracking-[0.2em] text-blue-200">
+          <span className="h-1.5 w-1.5 rounded-full bg-cyan-300 shadow-[0_0_12px_rgba(103,232,249,0.9)]" />
+          Discover
+        </div>
+
+        <h2 className="text-4xl font-black tracking-[-0.03em] text-white sm:text-5xl lg:text-6xl">
+          Find your
+          <br />
+          <span className="bg-gradient-to-r from-white via-blue-100 to-cyan-300 bg-clip-text text-transparent">
+            people.
+          </span>
+        </h2>
+
+        <p className="mt-6 max-w-xl text-base leading-7 text-blue-100/55 sm:text-lg sm:leading-8">
+          Explore communities built around the things you care about,
+          meet people with shared interests, and discover new
+          conversations.
+        </p>
+      </div>
+
+      <button className="group flex w-fit items-center gap-3 rounded-full border border-blue-300/20 bg-blue-500/10 px-5 py-3 text-sm font-semibold text-blue-100 transition hover:border-blue-300/40 hover:bg-blue-500/20">
+        View all
+        <span className="transition-transform duration-300 group-hover:translate-x-1">
+          →
+        </span>
+      </button>
+    </div>
+
+    {/* Community cards */}
+    <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      {communities.map((community, index) => (
+        <div
+          key={community.name}
+          className="group relative overflow-hidden rounded-3xl border border-blue-300/10 bg-blue-950/30 p-6 backdrop-blur-xl transition duration-500 hover:-translate-y-1 hover:border-blue-300/30 hover:bg-blue-900/35"
+        >
+          {/* Card glow */}
+          <div
+            className={`pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full blur-3xl transition duration-500 ${
+              index % 3 === 0
+                ? "bg-blue-500/15 group-hover:bg-blue-400/25"
+                : index % 3 === 1
+                  ? "bg-cyan-400/10 group-hover:bg-cyan-300/20"
+                  : "bg-violet-500/10 group-hover:bg-violet-400/20"
+            }`}
+          />
+
+          <div className="relative">
+
+            {/* Top row */}
+            <div className="flex items-center justify-between">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-blue-300/15 bg-blue-500/10 text-2xl shadow-[0_0_30px_rgba(37,99,235,0.12)]">
+                {community.icon}
+              </div>
+
+              <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[9px] font-bold tracking-[0.18em] text-blue-200/45">
+                EXPLORE
+              </span>
             </div>
 
-            <button className="w-fit rounded-full border border-white/15 px-5 py-2.5 text-sm font-semibold transition hover:bg-white/10">
-              View all
-            </button>
-          </div>
+            {/* Content */}
+            <h3 className="mt-9 text-xl font-black text-white transition group-hover:text-blue-100">
+              {community.name}
+            </h3>
 
-          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {communities.map((community) => (
-              <div
-                key={community.name}
-                className="group rounded-3xl border border-white/10 bg-white/[0.035] p-6 transition duration-300 hover:-translate-y-1 hover:border-white/20 hover:bg-white/[0.06]"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.08] text-xl">
-                    {community.icon}
+            <p className="mt-2 text-sm leading-6 text-blue-100/45">
+              {community.members}
+            </p>
+
+            {/* Member indicators */}
+            <div className="mt-7 flex items-center justify-between">
+              <div className="flex -space-x-2">
+                {["AO", "MK", "TS", "JA"].map((initials, memberIndex) => (
+                  <div
+                    key={initials}
+                    className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#09266d] bg-blue-500/20 text-[9px] font-bold text-blue-100 shadow-lg"
+                  >
+                    {initials}
                   </div>
-
-                  <span className="text-xs text-white/25">EXPLORE</span>
-                </div>
-
-                <h3 className="mt-8 text-xl font-bold">
-                  {community.name}
-                </h3>
-
-                <p className="mt-2 text-sm text-white/40">
-                  {community.members}
-                </p>
-
-                <div className="mt-6 flex -space-x-2">
-                  {["AO", "MK", "TS", "JA"].map((initials) => (
-                    <div
-                      key={initials}
-                      className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-[#101322] bg-white/10 text-[9px] font-bold"
-                    >
-                      {initials}
-                    </div>
-                  ))}
-                </div>
+                ))}
               </div>
-            ))}
+
+              <span className="text-xs font-medium text-blue-300/35">
+                Join community
+              </span>
+            </div>
+
+            {/* Bottom accent */}
+            <div className="mt-7 h-px w-full bg-gradient-to-r from-blue-400/30 via-cyan-300/10 to-transparent" />
           </div>
         </div>
-      </section>
+      ))}
+    </div>
+
+  </div>
+</section>
 
       {/* SOCIAL PREVIEW */}
       <section className="border-b border-white/10">
