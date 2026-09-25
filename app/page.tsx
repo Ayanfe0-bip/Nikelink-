@@ -291,48 +291,136 @@ export default function Home() {
   </div>
 </section>
       {/* FEATURES */}
-      <section id="features" className="border-b border-white/10">
-        <div className="mx-auto max-w-7xl px-5 py-24 sm:px-6">
-          <div className="max-w-2xl">
-            <p className="text-xs font-bold uppercase tracking-[0.25em] text-white/35">
-              The Nikelink experience
-            </p>
+      <section
+  id="features"
+  className="relative overflow-hidden border-b border-blue-300/10"
+>
+  {/* Ambient blue glow */}
+  <div className="pointer-events-none absolute left-1/4 top-20 h-72 w-72 rounded-full bg-blue-500/10 blur-[120px]" />
+  <div className="pointer-events-none absolute right-1/4 bottom-0 h-72 w-72 rounded-full bg-violet-500/10 blur-[120px]" />
 
-            <h2 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">
-              Built around people.
-            </h2>
+  <div className="relative mx-auto max-w-7xl px-5 py-24 sm:px-6 lg:py-28">
 
-            <p className="mt-5 text-lg leading-8 text-white/50">
-              A new way to discover people, ideas, communities and
-              opportunities.
-            </p>
+    {/* Section heading */}
+    <div className="max-w-2xl">
+      <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-blue-300/15 bg-blue-500/10 px-3.5 py-2 text-xs font-bold uppercase tracking-[0.2em] text-blue-200">
+        <span className="h-1.5 w-1.5 rounded-full bg-cyan-300 shadow-[0_0_12px_rgba(103,232,249,0.9)]" />
+        The Nikelink experience
+      </div>
+
+      <h2 className="text-4xl font-black tracking-[-0.03em] text-white sm:text-5xl lg:text-6xl">
+        Built around
+        <br />
+        <span className="bg-gradient-to-r from-white via-blue-100 to-cyan-300 bg-clip-text text-transparent">
+          people.
+        </span>
+      </h2>
+
+      <p className="mt-6 max-w-xl text-base leading-7 text-blue-100/55 sm:text-lg sm:leading-8">
+        A new way to discover people, ideas, communities and
+        opportunities — all in one connected world.
+      </p>
+    </div>
+
+    {/* Feature cards */}
+    <div className="mt-14 grid gap-5 md:grid-cols-3">
+
+      {/* CONNECT */}
+      <div className="group relative overflow-hidden rounded-3xl border border-blue-300/15 bg-blue-950/35 p-7 backdrop-blur-xl transition duration-500 hover:-translate-y-1 hover:border-blue-300/30 hover:bg-blue-900/35">
+        <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-blue-500/15 blur-3xl transition duration-500 group-hover:bg-blue-400/25" />
+
+        <div className="relative">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold tracking-[0.2em] text-blue-300/60">
+              01
+            </span>
+
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-blue-300/20 bg-blue-500/10 text-2xl text-blue-200 shadow-[0_0_30px_rgba(37,99,235,0.15)]">
+              ◎
+            </div>
           </div>
 
-         <div className="mt-14 grid gap-5 md:grid-cols-3">
-            <FeatureCard
-              number="01"
-              title="Connect"
-              icon="◎"
-              description="Meet people who share your interests, goals and passions."
-            />
+          <h3 className="mt-12 text-2xl font-black text-white">
+            Connect
+          </h3>
 
-            <FeatureCard
-              number="02"
-              title="Share"
-              icon="↗"
-              description="Share your ideas, experiences, creativity and knowledge."
-            />
+          <p className="mt-3 text-sm leading-7 text-blue-100/55">
+            Meet people who share your interests, goals and passions.
+          </p>
 
-            <FeatureCard
-              number="03"
-              title="Belong"
-              icon="♡"
-              description="Find communities where you feel understood and connected."
-            />
-          </div>
+          <div className="mt-8 h-px w-full bg-gradient-to-r from-blue-400/40 to-transparent" />
+
+          <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-blue-300/55">
+            People · Interests · Connections
+          </p>
         </div>
-      </section>
+      </div>
 
+      {/* SHARE */}
+      <div className="group relative overflow-hidden rounded-3xl border border-cyan-300/15 bg-blue-950/35 p-7 backdrop-blur-xl transition duration-500 hover:-translate-y-1 hover:border-cyan-300/30 hover:bg-blue-900/35">
+        <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-cyan-400/10 blur-3xl transition duration-500 group-hover:bg-cyan-300/20" />
+
+        <div className="relative">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold tracking-[0.2em] text-cyan-300/60">
+              02
+            </span>
+
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-300/20 bg-cyan-400/10 text-2xl text-cyan-200 shadow-[0_0_30px_rgba(34,211,238,0.15)]">
+              ↗
+            </div>
+          </div>
+
+          <h3 className="mt-12 text-2xl font-black text-white">
+            Share
+          </h3>
+
+          <p className="mt-3 text-sm leading-7 text-blue-100/55">
+            Share your ideas, experiences, creativity and knowledge.
+          </p>
+
+          <div className="mt-8 h-px w-full bg-gradient-to-r from-cyan-400/40 to-transparent" />
+
+          <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/55">
+            Ideas · Stories · Creativity
+          </p>
+        </div>
+      </div>
+
+      {/* BELONG */}
+      <div className="group relative overflow-hidden rounded-3xl border border-violet-300/15 bg-blue-950/35 p-7 backdrop-blur-xl transition duration-500 hover:-translate-y-1 hover:border-violet-300/30 hover:bg-blue-900/35">
+        <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-violet-500/10 blur-3xl transition duration-500 group-hover:bg-violet-400/20" />
+
+        <div className="relative">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold tracking-[0.2em] text-violet-300/60">
+              03
+            </span>
+
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-violet-300/20 bg-violet-500/10 text-2xl text-violet-200 shadow-[0_0_30px_rgba(139,92,246,0.15)]">
+              ♡
+            </div>
+          </div>
+
+          <h3 className="mt-12 text-2xl font-black text-white">
+            Belong
+          </h3>
+
+          <p className="mt-3 text-sm leading-7 text-blue-100/55">
+            Find communities where you feel understood and connected.
+          </p>
+
+          <div className="mt-8 h-px w-full bg-gradient-to-r from-violet-400/40 to-transparent" />
+
+          <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-violet-300/55">
+            Communities · Identity · Belonging
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
       {/* COMMUNITIES */}
       <section id="communities" className="border-b border-white/10">
         <div className="mx-auto max-w-7xl px-5 py-24 sm:px-6">
