@@ -23,12 +23,12 @@ type Connection = {
 export default function DiscoverPage() {
   const router = useRouter();
 
+  const [userId, setUserId] = useState("");
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [connectingId, setConnectingId] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     loadDiscover();
@@ -37,47 +37,43 @@ export default function DiscoverPage() {
   async function loadDiscover() {
     setLoading(true);
 
-    try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-      if (userError || !user) {
-        router.push("/login");
-        return;
-      }
-
-      setUserId(user.id);
-
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("*")
-        .neq("id", user.id)
-        .order("created_at", { ascending: false });
-
-      if (profileError) {
-        console.error("Profile loading error:", profileError);
-      } else {
-        setProfiles(profileData || []);
-      }
-
-      const { data: connectionData, error: connectionError } =
-        await supabase
-          .from("connections")
-          .select("*")
-          .or(`requester_id.eq.${user.id},receiver_id.eq.${user.id}`);
-
-      if (connectionError) {
-        console.error("Connection loading error:", connectionError);
-      } else {
-        setConnections(connectionData || []);
-      }
-    } catch (error) {
-      console.error("Discover error:", error);
-    } finally {
-      setLoading(false);
+    if (userError || !user) {
+      router.replace("/login");
+      return;
     }
+
+    setUserId(user.id);
+
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
+      .select("*")
+      .neq("id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (profileError) {
+      console.error("Profiles error:", profileError);
+    } else {
+      setProfiles(profileData || []);
+    }
+
+    const { data: connectionData, error: connectionError } =
+      await supabase
+        .from("connections")
+        .select("*")
+        .or(`requester_id.eq.${user.id},receiver_id.eq.${user.id}`);
+
+    if (connectionError) {
+      console.error("Connections error:", connectionError);
+    } else {
+      setConnections(connectionData || []);
+    }
+
+    setLoading(false);
   }
 
   function getConnection(profileId: string) {
@@ -90,12 +86,10 @@ export default function DiscoverPage() {
     );
   }
 
-  function getConnectionLabel(profileId: string) {
+  function getButtonText(profileId: string) {
     const connection = getConnection(profileId);
 
-    if (!connection) {
-      return "Connect";
-    }
+    if (!connection) return "Connect";
 
     if (connection.status === "accepted") {
       return "Connected";
@@ -115,33 +109,27 @@ export default function DiscoverPage() {
       return "Respond";
     }
 
-    if (connection.status === "declined") {
-      return "Connect";
-    }
-
     return "Connect";
   }
 
   async function handleConnect(profileId: string) {
     if (!userId) return;
 
-    const existingConnection = getConnection(profileId);
+    const existing = getConnection(profileId);
 
-    if (existingConnection) {
-      if (existingConnection.status === "accepted") {
-        return;
-      }
+    if (existing) {
+      if (existing.status === "accepted") return;
 
       if (
-        existingConnection.status === "pending" &&
-        existingConnection.requester_id === userId
+        existing.status === "pending" &&
+        existing.requester_id === userId
       ) {
         return;
       }
 
       if (
-        existingConnection.status === "pending" &&
-        existingConnection.receiver_id === userId
+        existing.status === "pending" &&
+        existing.receiver_id === userId
       ) {
         router.push("/notifications");
         return;
@@ -150,473 +138,184 @@ export default function DiscoverPage() {
 
     setConnectingId(profileId);
 
-    try {
-      const { data, error } = await supabase
-        .from("connections")
-        .insert({
-          requester_id: userId,
-          receiver_id: profileId,
-          status: "pending",
-        })
-        .select()
-        .single();
+    const { data, error } = await supabase
+      .from("connections")
+      .insert({
+        requester_id: userId,
+        receiver_id: profileId,
+        status: "pending",
+      })
+      .select()
+      .single();
 
-      if (error) {
-        console.error("Connection request error:", error);
-        alert(error.message);
-        return;
-      }
-
-      if (data) {
-        setConnections((current) => [...current, data]);
-      }
-    } catch (error) {
+    if (error) {
       console.error("Connect error:", error);
-      alert("Something went wrong. Please try again.");
-    } finally {
-      setConnectingId(null);
+      alert(error.message);
+    } else if (data) {
+      setConnections((current) => [...current, data]);
     }
+
+    setConnectingId(null);
   }
 
   const filteredProfiles = profiles.filter((profile) => {
-    const searchText = search.toLowerCase().trim();
+    const term = search.toLowerCase().trim();
 
-    if (!searchText) {
-      return true;
-    }
-
-    const fullName = profile.full_name?.toLowerCase() || "";
-    const username = profile.username?.toLowerCase() || "";
-    const country = profile.country?.toLowerCase() || "";
-    const bio = profile.bio?.toLowerCase() || "";
-    const interests = profile.interests?.join(" ").toLowerCase() || "";
+    if (!term) return true;
 
     return (
-      fullName.includes(searchText) ||
-      username.includes(searchText) ||
-      country.includes(searchText) ||
-      bio.includes(searchText) ||
-      interests.includes(searchText)
+      profile.full_name?.toLowerCase().includes(term) ||
+      profile.username?.toLowerCase().includes(term) ||
+      profile.country?.toLowerCase().includes(term) ||
+      profile.bio?.toLowerCase().includes(term) ||
+      profile.interests?.some((interest) =>
+        interest.toLowerCase().includes(term)
+      )
     );
   });
 
-  return (
-    <main
-      style={{
-        minHeight: "100vh",
-        background:
-          "radial-gradient(circle at top left, rgba(91, 33, 182, 0.25), transparent 35%), radial-gradient(circle at top right, rgba(14, 165, 233, 0.15), transparent 30%), #050816",
-        color: "#fff",
-        paddingBottom: "90px",
-      }}
-    >
-      {/* Header */}
-      <header
-        style={{
-          padding: "24px 18px 18px",
-          position: "sticky",
-          top: 0,
-          zIndex: 20,
-          background: "rgba(5, 8, 22, 0.88)",
-          backdropFilter: "blur(18px)",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-        }}
-      >
-        <div
-          style={{
-            maxWidth: "760px",
-            margin: "0 auto",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: "18px",
-            }}
-          >
-            <div>
-              <div
-                style={{
-                  fontSize: "13px",
-                  color: "#8b5cf6",
-                  fontWeight: 700,
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                  marginBottom: "5px",
-                }}
-              >
-                Nikelink
-              </div>
+  if (loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#050816] text-white">
+        <p className="text-white/50">Discovering people...</p>
+      </main>
+    );
+  }
 
-              <h1
-                style={{
-                  margin: 0,
-                  fontSize: "30px",
-                  lineHeight: 1.1,
-                  fontWeight: 800,
-                }}
-              >
+  return (
+    <main className="min-h-screen bg-[#050816] pb-24 text-white">
+      {/* HEADER */}
+      <header className="sticky top-0 z-20 border-b border-white/10 bg-[#050816]/90 px-5 py-5 backdrop-blur-xl">
+        <div className="mx-auto max-w-3xl">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-violet-400">
+                Nikelink
+              </p>
+
+              <h1 className="mt-1 text-3xl font-black">
                 Discover
               </h1>
             </div>
 
             <button
               onClick={() => router.push("/profile")}
-              style={{
-                width: "42px",
-                height: "42px",
-                borderRadius: "50%",
-                border: "1px solid rgba(139,92,246,0.45)",
-                background:
-                  "linear-gradient(135deg, rgba(139,92,246,0.25), rgba(14,165,233,0.18))",
-                color: "#fff",
-                cursor: "pointer",
-                fontSize: "18px",
-              }}
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5"
             >
               👤
             </button>
           </div>
 
-          {/* Search */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              padding: "0 14px",
-              height: "50px",
-              borderRadius: "16px",
-              background: "rgba(255,255,255,0.055)",
-              border: "1px solid rgba(255,255,255,0.08)",
-            }}
-          >
-            <span
-              style={{
-                fontSize: "18px",
-                opacity: 0.65,
-              }}
-            >
-              🔍
-            </span>
+          <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4">
+            <span className="text-white/50">🔍</span>
 
             <input
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(e) => setSearch(e.target.value)}
               placeholder="Search people, interests or countries..."
-              style={{
-                flex: 1,
-                border: "none",
-                outline: "none",
-                background: "transparent",
-                color: "#fff",
-                fontSize: "14px",
-              }}
+              className="w-full bg-transparent py-3 text-sm text-white outline-none placeholder:text-white/30"
             />
           </div>
         </div>
       </header>
 
-      {/* Content */}
-      <section
-        style={{
-          maxWidth: "760px",
-          margin: "0 auto",
-          padding: "22px 18px",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: "16px",
-          }}
-        >
-          <div>
-            <h2
-              style={{
-                margin: 0,
-                fontSize: "20px",
-                fontWeight: 750,
-              }}
-            >
-              People you may know
-            </h2>
+      {/* CONTENT */}
+      <section className="mx-auto max-w-3xl px-5 py-7">
+        <div className="mb-6">
+          <h2 className="text-xl font-bold">
+            People you may know
+          </h2>
 
-            <p
-              style={{
-                margin: "5px 0 0",
-                color: "rgba(255,255,255,0.55)",
-                fontSize: "13px",
-              }}
-            >
-              Connect with people around the world.
-            </p>
-          </div>
-
-          <span
-            style={{
-              fontSize: "12px",
-              color: "#a78bfa",
-              background: "rgba(139,92,246,0.1)",
-              border: "1px solid rgba(139,92,246,0.2)",
-              padding: "7px 10px",
-              borderRadius: "999px",
-            }}
-          >
-            {filteredProfiles.length}
-          </span>
+          <p className="mt-1 text-sm text-white/45">
+            Connect with people around the world.
+          </p>
         </div>
 
-        {loading ? (
-          <div
-            style={{
-              textAlign: "center",
-              padding: "70px 20px",
-              color: "rgba(255,255,255,0.55)",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "30px",
-                marginBottom: "12px",
-              }}
-            >
-              ✨
-            </div>
+        {filteredProfiles.length === 0 ? (
+          <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-12 text-center">
+            <div className="mb-4 text-4xl">🌍</div>
 
-            <p>Discovering people...</p>
-          </div>
-        ) : filteredProfiles.length === 0 ? (
-          <div
-            style={{
-              textAlign: "center",
-              padding: "70px 20px",
-              borderRadius: "22px",
-              background: "rgba(255,255,255,0.035)",
-              border: "1px solid rgba(255,255,255,0.07)",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "42px",
-                marginBottom: "12px",
-              }}
-            >
-              🌍
-            </div>
-
-            <h3
-              style={{
-                margin: "0 0 8px",
-                fontSize: "19px",
-              }}
-            >
+            <h3 className="text-lg font-bold">
               No people found
             </h3>
 
-            <p
-              style={{
-                margin: 0,
-                color: "rgba(255,255,255,0.55)",
-                fontSize: "14px",
-              }}
-            >
+            <p className="mt-2 text-sm text-white/45">
               Try another search.
             </p>
           </div>
         ) : (
-          <div
-            style={{
-              display: "grid",
-              gap: "14px",
-            }}
-          >
+          <div className="space-y-4">
             {filteredProfiles.map((profile) => {
-              const connectionLabel = getConnectionLabel(profile.id);
+              const buttonText = getButtonText(profile.id);
+              const isConnecting = connectingId === profile.id;
 
               const initials =
-                profile.full_name?.trim()?.charAt(0)?.toUpperCase() ||
-                profile.username?.trim()?.charAt(0)?.toUpperCase() ||
+                profile.full_name?.trim().charAt(0).toUpperCase() ||
+                profile.username?.trim().charAt(0).toUpperCase() ||
                 "?";
-
-              const isConnecting = connectingId === profile.id;
 
               return (
                 <article
                   key={profile.id}
-                  style={{
-                    position: "relative",
-                    overflow: "hidden",
-                    borderRadius: "22px",
-                    padding: "18px",
-                    background:
-                      "linear-gradient(145deg, rgba(255,255,255,0.065), rgba(255,255,255,0.025))",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    boxShadow: "0 18px 45px rgba(0,0,0,0.18)",
-                  }}
+                  className="rounded-3xl border border-white/10 bg-white/[0.035] p-5 shadow-xl"
                 >
-                  <div
-                    style={{
-                      position: "absolute",
-                      width: "120px",
-                      height: "120px",
-                      borderRadius: "50%",
-                      background:
-                        "radial-gradient(circle, rgba(139,92,246,0.18), transparent 70%)",
-                      top: "-60px",
-                      right: "-40px",
-                      pointerEvents: "none",
-                    }}
-                  />
-
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: "14px",
-                      alignItems: "flex-start",
-                      position: "relative",
-                      zIndex: 1,
-                    }}
-                  >
-                    {/* Avatar */}
-                    <div
-                      style={{
-                        width: "58px",
-                        height: "58px",
-                        minWidth: "58px",
-                        borderRadius: "18px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: "21px",
-                        fontWeight: 800,
-                        background:
-                          "linear-gradient(135deg, #7c3aed, #2563eb, #ec4899)",
-                        boxShadow: "0 8px 25px rgba(124,58,237,0.3)",
-                      }}
-                    >
+                  <div className="flex gap-4">
+                    {/* AVATAR */}
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 via-blue-600 to-pink-500 text-xl font-black shadow-lg">
                       {initials}
                     </div>
 
-                    {/* Profile details */}
-                    <div
-                      style={{
-                        flex: 1,
-                        minWidth: 0,
-                      }}
-                    >
-                      <h3
-                        style={{
-                          margin: 0,
-                          fontSize: "17px",
-                          fontWeight: 750,
-                        }}
-                      >
+                    {/* DETAILS */}
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-bold">
                         {profile.full_name || "Nikelink User"}
                       </h3>
 
                       {profile.username && (
-                        <p
-                          style={{
-                            margin: "3px 0 0",
-                            color: "#a78bfa",
-                            fontSize: "13px",
-                          }}
-                        >
+                        <p className="mt-1 text-sm text-violet-400">
                           @{profile.username}
                         </p>
                       )}
 
                       {profile.country && (
-                        <p
-                          style={{
-                            margin: "5px 0 0",
-                            color: "rgba(255,255,255,0.55)",
-                            fontSize: "12px",
-                          }}
-                        >
+                        <p className="mt-1 text-xs text-white/45">
                           🌍 {profile.country}
                         </p>
                       )}
                     </div>
                   </div>
 
-                  {/* Bio */}
                   {profile.bio && (
-                    <p
-                      style={{
-                        position: "relative",
-                        zIndex: 1,
-                        margin: "15px 0 0",
-                        color: "rgba(255,255,255,0.68)",
-                        fontSize: "13px",
-                        lineHeight: 1.55,
-                      }}
-                    >
+                    <p className="mt-4 text-sm leading-6 text-white/60">
                       {profile.bio}
                     </p>
                   )}
 
-                  {/* Interests */}
-                  {profile.interests && profile.interests.length > 0 && (
-                    <div
-                      style={{
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: "7px",
-                        marginTop: "13px",
-                        position: "relative",
-                        zIndex: 1,
-                      }}
-                    >
-                      {profile.interests.slice(0, 5).map((interest) => (
-                        <span
-                          key={interest}
-                          style={{
-                            padding: "6px 9px",
-                            borderRadius: "999px",
-                            background: "rgba(139,92,246,0.1)",
-                            border:
-                              "1px solid rgba(139,92,246,0.18)",
-                            color: "#c4b5fd",
-                            fontSize: "11px",
-                          }}
-                        >
-                          {interest}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                  {profile.interests &&
+                    profile.interests.length > 0 && (
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {profile.interests
+                          .slice(0, 5)
+                          .map((interest) => (
+                            <span
+                              key={interest}
+                              className="rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1 text-xs text-violet-300"
+                            >
+                              {interest}
+                            </span>
+                          ))}
+                      </div>
+                    )}
 
-                  {/* Actions */}
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: "9px",
-                      marginTop: "17px",
-                      position: "relative",
-                      zIndex: 1,
-                    }}
-                  >
+                  {/* ACTIONS */}
+                  <div className="mt-5 flex gap-3">
                     <button
                       onClick={() =>
-                        router.push(`/profile?user=${profile.id}`)
+                        router.push(
+                          `/profile?user=${profile.id}`
+                        )
                       }
-                      style={{
-                        flex: 1,
-                        height: "42px",
-                        borderRadius: "13px",
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        background: "rgba(255,255,255,0.045)",
-                        color: "#fff",
-                        fontWeight: 650,
-                        fontSize: "12px",
-                        cursor: "pointer",
-                      }}
+                      className="flex-1 rounded-xl border border-white/10 bg-white/5 py-3 text-sm font-semibold text-white/80 transition hover:bg-white/10"
                     >
                       View Profile
                     </button>
@@ -625,42 +324,20 @@ export default function DiscoverPage() {
                       onClick={() => handleConnect(profile.id)}
                       disabled={
                         isConnecting ||
-                        connectionLabel === "Connected" ||
-                        connectionLabel === "Request Sent"
+                        buttonText === "Connected" ||
+                        buttonText === "Request Sent"
                       }
-                      style={{
-                        flex: 1,
-                        height: "42px",
-                        borderRadius: "13px",
-                        border: "none",
-                        background:
-                          connectionLabel === "Connected"
-                            ? "rgba(34,197,94,0.15)"
-                            : connectionLabel === "Request Sent"
-                              ? "rgba(255,255,255,0.08)"
-                              : connectionLabel === "Respond"
-                                ? "linear-gradient(135deg, #ec4899, #8b5cf6)"
-                                : "linear-gradient(135deg, #7c3aed, #2563eb)",
-                        color:
-                          connectionLabel === "Connected"
-                            ? "#86efac"
-                            : "#fff",
-                        fontWeight: 750,
-                        fontSize: "12px",
-                        cursor:
-                          isConnecting ||
-                          connectionLabel === "Connected" ||
-                          connectionLabel === "Request Sent"
-                            ? "default"
-                            : "pointer",
-                        opacity: isConnecting ? 0.7 : 1,
-                        boxShadow:
-                          connectionLabel === "Connect"
-                            ? "0 8px 25px rgba(124,58,237,0.25)"
-                            : "none",
-                      }}
+                      className={`flex-1 rounded-xl py-3 text-sm font-bold transition ${
+                        buttonText === "Connected"
+                          ? "bg-green-500/15 text-green-300"
+                          : buttonText === "Request Sent"
+                            ? "bg-white/10 text-white/50"
+                            : "bg-gradient-to-r from-violet-600 to-blue-600 text-white hover:opacity-90"
+                      }`}
                     >
-                      {isConnecting ? "Sending..." : connectionLabel}
+                      {isConnecting
+                        ? "Sending..."
+                        : buttonText}
                     </button>
                   </div>
                 </article>
@@ -670,17 +347,42 @@ export default function DiscoverPage() {
         )}
       </section>
 
-      {/* Bottom navigation */}
-      <nav
-        style={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          zIndex: 50,
-          height: "72px",
-          background: "rgba(5,8,22,0.94)",
-          backdropFilter: "blur(18px)",
-          borderTop: "1px solid rgba(255,255,255,0.07)",
-          display: "flex",
-        
+      {/* MOBILE NAVIGATION */}
+      <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-white/10 bg-[#050816]/95 backdrop-blur-xl">
+        <div className="mx-auto grid h-20 max-w-3xl grid-cols-4">
+          <button
+            onClick={() => router.push("/feed")}
+            className="flex flex-col items-center justify-center gap-1 text-white/50"
+          >
+            <span className="text-xl">⌂</span>
+            <span className="text-[10px]">Home</span>
+          </button>
+
+          <button
+            onClick={() => router.push("/discover")}
+            className="flex flex-col items-center justify-center gap-1 text-violet-400"
+          >
+            <span className="text-xl">◎</span>
+            <span className="text-[10px]">Discover</span>
+          </button>
+
+          <button
+            onClick={() => router.push("/feed")}
+            className="flex flex-col items-center justify-center gap-1 text-white/50"
+          >
+            <span className="text-xl">＋</span>
+            <span className="text-[10px]">Create</span>
+          </button>
+
+          <button
+            onClick={() => router.push("/notifications")}
+            className="flex flex-col items-center justify-center gap-1 text-white/50"
+          >
+            <span className="text-xl">♢</span>
+            <span className="text-[10px]">Alerts</span>
+          </button>
+        </div>
+      </nav>
+    </main>
+  );
+}
