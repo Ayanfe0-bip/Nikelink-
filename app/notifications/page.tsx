@@ -4,19 +4,24 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 
-type RequestItem = {
+type Connection = {
   id: string;
   requester_id: string;
   receiver_id: string;
   status: string;
   created_at: string;
-  requester: {
-    id: string;
-    full_name: string | null;
-    username: string | null;
-    country: string | null;
-    bio: string | null;
-  } | null;
+};
+
+type Profile = {
+  id: string;
+  full_name: string | null;
+  username: string | null;
+  country: string | null;
+  bio: string | null;
+};
+
+type RequestItem = Connection & {
+  requester: Profile | null;
 };
 
 export default function NotificationsPage() {
@@ -48,35 +53,59 @@ export default function NotificationsPage() {
 
     setUserId(user.id);
 
-    const { data, error } = await supabase
+    // Get pending connection requests
+    const { data: connections, error: connectionError } = await supabase
       .from("connections")
-      .select(
-        `
-        id,
-        requester_id,
-        receiver_id,
-        status,
-        created_at,
-        requester:profiles!connections_requester_id_fkey (
-          id,
-          full_name,
-          username,
-          country,
-          bio
-        )
-      `
-      )
+      .select("id, requester_id, receiver_id, status, created_at")
       .eq("receiver_id", user.id)
       .eq("status", "pending")
       .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("Notification request error:", error);
-      setMessage(error.message);
-    } else {
-      setRequests((data as unknown as RequestItem[]) || []);
+    if (connectionError) {
+      console.error(connectionError);
+      setMessage(connectionError.message);
+      setLoading(false);
+      return;
     }
 
+    if (!connections || connections.length === 0) {
+      setRequests([]);
+      setLoading(false);
+      return;
+    }
+
+    // Get requester IDs
+    const requesterIds = connections.map(
+      (connection) => connection.requester_id
+    );
+
+    // Get profiles separately
+    const { data: profiles, error: profileError } = await supabase
+      .from("profiles")
+      .select("id, full_name, username, country, bio")
+      .in("id", requesterIds);
+
+    if (profileError) {
+      console.error(profileError);
+      setMessage(profileError.message);
+      setLoading(false);
+      return;
+    }
+
+    const profileMap = new Map<string, Profile>();
+
+    (profiles || []).forEach((profile) => {
+      profileMap.set(profile.id, profile);
+    });
+
+    const combinedRequests: RequestItem[] = connections.map(
+      (connection) => ({
+        ...connection,
+        requester: profileMap.get(connection.requester_id) || null,
+      })
+    );
+
+    setRequests(combinedRequests);
     setLoading(false);
   }
 
@@ -96,7 +125,7 @@ export default function NotificationsPage() {
       .eq("receiver_id", userId);
 
     if (error) {
-      console.error("Connection response error:", error);
+      console.error(error);
       setMessage(error.message);
       setProcessingId(null);
       return;
@@ -310,4 +339,4 @@ export default function NotificationsPage() {
       </nav>
     </main>
   );
-    }
+                      }
