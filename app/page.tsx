@@ -716,7 +716,7 @@ export default function Home() {
     </p>
 
   </div>
-</section 
+</section>
   {/* FOOTER */}
 <footer className="relative overflow-hidden border-t border-blue-300/10 bg-blue-950/20">
   <div className="pointer-events-none absolute left-1/4 top-0 h-40 w-72 rounded-full bg-blue-500/10 blur-[100px]" />
