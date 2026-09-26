@@ -11,13 +11,6 @@ type Profile = {
   country: string | null;
 };
 
-type Connection = {
-  id: string;
-  requester_id: string;
-  receiver_id: string;
-  status: string;
-};
-
 type Message = {
   id: string;
   sender_id: string;
@@ -29,112 +22,63 @@ type Message = {
 export default function MessagesPage() {
   const router = useRouter();
 
-  const [userId, setUserId] = useState<string | null>(null);
-  const [connections, setConnections] = useState<Connection[]>([]);
+  const [userId, setUserId] = useState("");
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
-
-  const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
-  const [newMessage, setNewMessage] = useState("");
-
+  const [selected, setSelected] = useState<Profile | null>(null);
+  const [text, setText] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
 
-  // Get current user
   useEffect(() => {
-    const getUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+    async function load() {
+      const { data } = await supabase.auth.getUser();
 
-      if (!user) {
-        router.push("/login");
+      if (!data.user) {
+        router.replace("/login");
         return;
       }
 
-      setUserId(user.id);
-    };
+      const id = data.user.id;
+      setUserId(id);
 
-    getUser();
-  }, [router]);
-
-  // Load accepted connections
-  useEffect(() => {
-    if (!userId) return;
-
-    const loadConnections = async () => {
-      setLoading(true);
-
-      const { data, error } = await supabase
+      const { data: connections } = await supabase
         .from("connections")
-        .select("*")
+        .select("requester_id, receiver_id")
         .eq("status", "accepted")
-        .or(`requester_id.eq.${userId},receiver_id.eq.${userId}`);
+        .or(`requester_id.eq.${id},receiver_id.eq.${id}`);
 
-      if (error) {
-        console.error("Connections error:", error);
-        setLoading(false);
-        return;
-      }
-
-      const connectionData = data || [];
-      setConnections(connectionData);
-
-      const otherUserIds = connectionData.map((connection) =>
-        connection.requester_id === userId
-          ? connection.receiver_id
-          : connection.requester_id
+      const ids = (connections || []).map((c) =>
+        c.requester_id === id ? c.receiver_id : c.requester_id
       );
 
-      if (otherUserIds.length > 0) {
-        const { data: profileData, error: profileError } = await supabase
+      if (ids.length) {
+        const { data: people } = await supabase
           .from("profiles")
           .select("id, full_name, username, country")
-          .in("id", otherUserIds);
+          .in("id", ids);
 
-        if (profileError) {
-          console.error("Profiles error:", profileError);
-        } else {
-          setProfiles(profileData || []);
-        }
-      } else {
-        setProfiles([]);
+        setProfiles(people || []);
       }
 
-      setLoading(false);
-    };
-
-    loadConnections();
-  }, [userId]);
-
-  // Load all messages involving current user
-  useEffect(() => {
-    if (!userId) return;
-
-    const loadMessages = async () => {
-      const { data, error } = await supabase
+      const { data: msgs } = await supabase
         .from("messages")
         .select("id, sender_id, receiver_id, content, created_at")
-        .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+        .or(`sender_id.eq.${id},receiver_id.eq.${id}`)
         .order("created_at", { ascending: true });
 
-      if (error) {
-        console.error("Messages error:", error);
-        return;
-      }
+      setMessages(msgs || []);
+      setLoading(false);
+    }
 
-      setMessages(data || []);
-    };
+    load();
+  }, [router]);
 
-    loadMessages();
-  }, [userId]);
-
-  // Realtime new messages
   useEffect(() => {
     if (!userId) return;
 
     const channel = supabase
-      .channel(`messages-${userId}`)
+      .channel("nikelink-messages")
       .on(
         "postgres_changes",
         {
@@ -143,20 +87,15 @@ export default function MessagesPage() {
           table: "messages",
         },
         (payload) => {
-          const incomingMessage = payload.new as Message;
+          const message = payload.new as Message;
 
           if (
-            incomingMessage.sender_id === userId ||
-            incomingMessage.receiver_id === userId
+            message.sender_id === userId ||
+            message.receiver_id === userId
           ) {
-            setMessages((current) => {
-              const exists = current.some(
-                (message) => message.id === incomingMessage.id
-              );
-
-              if (exists) return current;
-
-              return [...current, incomingMessage];
+            setMessages((old) => {
+              if (old.some((m) => m.id === message.id)) return old;
+              return [...old, message];
             });
           }
         }
@@ -168,335 +107,233 @@ export default function MessagesPage() {
     };
   }, [userId]);
 
-  // Messages for selected person
-  const selectedMessages = useMemo(() => {
-    if (!selectedUser || !userId) return [];
+  const conversation = useMemo(() => {
+    if (!selected) return [];
 
     return messages.filter(
-      (message) =>
-        (message.sender_id === userId &&
-          message.receiver_id === selectedUser.id) ||
-        (message.sender_id === selectedUser.id &&
-          message.receiver_id === userId)
+      (m) =>
+        (m.sender_id === userId && m.receiver_id === selected.id) ||
+        (m.sender_id === selected.id && m.receiver_id === userId)
     );
-  }, [messages, selectedUser, userId]);
+  }, [messages, selected, userId]);
 
-  // Get last message for each connection
-  const getLastMessage = (profileId: string) => {
-    const conversation = messages.filter(
-      (message) =>
-        (message.sender_id === userId &&
-          message.receiver_id === profileId) ||
-        (message.sender_id === profileId &&
-          message.receiver_id === userId)
+  function lastMessage(id: string) {
+    const list = messages.filter(
+      (m) =>
+        (m.sender_id === userId && m.receiver_id === id) ||
+        (m.sender_id === id && m.receiver_id === userId)
     );
 
-    if (conversation.length === 0) return null;
+    return list[list.length - 1];
+  }
 
-    return conversation[conversation.length - 1];
-  };
-
-  // Simple unread indicator based on the latest incoming message
-  const hasUnread = (profileId: string) => {
-    const lastMessage = getLastMessage(profileId);
-
-    if (!lastMessage) return false;
-
-    return lastMessage.sender_id === profileId && selectedUser?.id !== profileId;
-  };
-
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-
-    return date.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const formatConversationTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-
-    const sameDay =
-      date.getDate() === now.getDate() &&
-      date.getMonth() === now.getMonth() &&
-      date.getFullYear() === now.getFullYear();
-
-    if (sameDay) {
-      return date.toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    }
-
-    return date.toLocaleDateString([], {
-      day: "numeric",
-      month: "short",
-    });
-  };
-
-  const getDisplayName = (profile: Profile) => {
-    return (
-      profile.full_name ||
-      profile.username ||
-      "Nikelink User"
-    );
-  };
-
-  const getInitial = (profile: Profile) => {
-    return getDisplayName(profile).charAt(0).toUpperCase();
-  };
-
-  // Send message
-  const sendMessage = async () => {
-    if (!userId || !selectedUser || !newMessage.trim() || sending) {
-      return;
-    }
+  async function sendMessage() {
+    if (!text.trim() || !selected || !userId || sending) return;
 
     setSending(true);
-
-    const content = newMessage.trim();
 
     const { data, error } = await supabase
       .from("messages")
       .insert({
         sender_id: userId,
-        receiver_id: selectedUser.id,
-        content,
+        receiver_id: selected.id,
+        content: text.trim(),
       })
       .select()
       .single();
 
-    if (error) {
-      console.error("Send message error:", error);
-      setSending(false);
-      return;
+    if (!error && data) {
+      setMessages((old) => [...old, data]);
+      setText("");
     }
 
-    if (data) {
-      setMessages((current) => {
-        const exists = current.some((message) => message.id === data.id);
-
-        if (exists) return current;
-
-        return [...current, data];
-      });
-    }
-
-    setNewMessage("");
     setSending(false);
-  };
+  }
 
-  // Send with Enter
-  const handleKeyDown = (
-    event: React.KeyboardEvent<HTMLInputElement>
-  ) => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      sendMessage();
-    }
-  };
+  function time(value: string) {
+    return new Date(value).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  function name(profile: Profile) {
+    return profile.full_name || profile.username || "Nikelink User";
+  }
 
   return (
     <main className="min-h-screen bg-[#050816] text-white">
-      <div className="mx-auto flex min-h-screen max-w-7xl flex-col">
+      <header className="border-b border-white/10 p-4">
+        <button
+          onClick={() => router.push("/dashboard")}
+          className="text-sm text-white/50"
+        >
+          ← Dashboard
+        </button>
 
-        {/* Header */}
-        <header className="border-b border-white/10 bg-[#050816]/95 px-4 py-4 backdrop-blur-xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <button
-                onClick={() => router.push("/dashboard")}
-                className="mb-1 text-sm text-white/50 transition hover:text-white"
-              >
-                ← Dashboard
-              </button>
+        <h1 className="mt-2 text-2xl font-bold">Messages</h1>
+      </header>
 
-              <h1 className="text-2xl font-bold">
-                Messages
-              </h1>
-
-              <p className="text-sm text-white/50">
-                Chat with your Nikelink connections
-              </p>
-            </div>
-
-            <div className="rounded-full border border-violet-400/20 bg-violet-500/10 px-3 py-1.5 text-xs text-violet-200">
-              {profiles.length} connection
-              {profiles.length === 1 ? "" : "s"}
-            </div>
+      <div className="mx-auto flex max-w-6xl">
+        <aside
+          className={`w-full border-r border-white/10 md:w-80 ${
+            selected ? "hidden md:block" : "block"
+          }`}
+        >
+          <div className="border-b border-white/10 p-4 font-semibold">
+            Conversations
           </div>
-        </header>
 
-        {/* Main */}
-        <div className="flex flex-1 overflow-hidden">
-
-          {/* Conversation List */}
-          <aside
-            className={`w-full border-r border-white/10 bg-[#080b1c] md:w-[360px] ${
-              selectedUser ? "hidden md:block" : "block"
-            }`}
-          >
-            <div className="border-b border-white/10 px-4 py-4">
-              <h2 className="font-semibold">
-                Conversations
-              </h2>
+          {loading ? (
+            <p className="p-5 text-white/40">
+              Loading...
+            </p>
+          ) : profiles.length === 0 ? (
+            <div className="p-6 text-center text-white/40">
+              No connections yet.
             </div>
+          ) : (
+            profiles.map((profile) => {
+              const last = lastMessage(profile.id);
 
-            <div className="overflow-y-auto">
-              {loading ? (
-                <div className="px-5 py-10 text-center text-sm text-white/50">
-                  Loading conversations...
-                </div>
-              ) : profiles.length === 0 ? (
-                <div className="px-5 py-12 text-center">
-                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-violet-500/10 text-2xl">
-                    💬
+              return (
+                <button
+                  key={profile.id}
+                  onClick={() => setSelected(profile)}
+                  className="flex w-full gap-3 border-b border-white/5 p-4 text-left hover:bg-white/5"
+                >
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-pink-500 font-bold">
+                    {name(profile)[0]?.toUpperCase()}
                   </div>
 
-                  <h3 className="mb-2 font-semibold">
-                    No conversations yet
-                  </h3>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex justify-between gap-2">
+                      <span className="truncate font-semibold">
+                        {name(profile)}
+                      </span>
 
-                  <p className="text-sm leading-6 text-white/45">
-                    Connect with people on Nikelink to start chatting.
+                      {last && (
+                        <span className="text-[10px] text-white/30">
+                          {time(last.created_at)}
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="mt-1 truncate text-xs text-white/40">
+                      {last
+                        ? last.sender_id === userId
+                          ? `You: ${last.content}`
+                          : last.content
+                        : "Start a conversation"}
+                    </p>
+                  </div>
+                </button>
+              );
+            })
+          )}
+        </aside>
+
+        <section
+          className={`flex min-h-[calc(100vh-90px)] flex-1 flex-col ${
+            selected ? "flex" : "hidden md:flex"
+          }`}
+        >
+          {!selected ? (
+            <div className="flex flex-1 items-center justify-center text-white/40">
+              Select a conversation
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-3 border-b border-white/10 p-4">
+                <button
+                  onClick={() => setSelected(null)}
+                  className="md:hidden"
+                >
+                  ←
+                </button>
+
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-pink-500 font-bold">
+                  {name(selected)[0]?.toUpperCase()}
+                </div>
+
+                <div>
+                  <p className="font-semibold">
+                    {name(selected)}
                   </p>
 
-                  <button
-                    onClick={() => router.push("/connections")}
-                    className="mt-5 rounded-xl bg-gradient-to-r from-violet-600 to-pink-500 px-5 py-3 text-sm font-semibold transition hover:opacity-90"
-                  >
-                    View Connections
-                  </button>
-                </div>
-              ) : (
-                profiles.map((profile) => {
-                  const lastMessage = getLastMessage(profile.id);
-                  const unread = hasUnread(profile.id);
-                  const isSelected =
-                    selectedUser?.id === profile.id;
-
-                  return (
-                    <button
-                      key={profile.id}
-                      onClick={() => setSelectedUser(profile)}
-                      className={`flex w-full items-center gap-3 border-b border-white/5 px-4 py-4 text-left transition ${
-                        isSelected
-                          ? "bg-violet-500/10"
-                          : "hover:bg-white/[0.03]"
-                      }`}
-                    >
-                      {/* Avatar */}
-                      <div className="relative shrink-0">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 via-blue-500 to-pink-500 text-lg font-bold">
-                          {getInitial(profile)}
-                        </div>
-
-                        {unread && (
-                          <span className="absolute -right-0.5 -top-0.5 h-3.5 w-3.5 rounded-full border-2 border-[#080b1c] bg-pink-500" />
-                        )}
-                      </div>
-
-                      {/* Conversation Info */}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <h3
-                            className={`truncate text-sm ${
-                              unread
-                                ? "font-bold text-white"
-                                : "font-semibold text-white/90"
-                            }`}
-                          >
-                            {getDisplayName(profile)}
-                          </h3>
-
-                          {lastMessage && (
-                            <span className="shrink-0 text-[10px] text-white/35">
-                              {formatConversationTime(
-                                lastMessage.created_at
-                              )}
-                            </span>
-                          )}
-                        </div>
-
-                        <p
-                          className={`mt-1 truncate text-xs ${
-                            unread
-                              ? "font-medium text-white/75"
-                              : "text-white/40"
-                          }`}
-                        >
-                          {lastMessage
-                            ? lastMessage.sender_id === userId
-                              ? `You: ${lastMessage.content}`
-                              : lastMessage.content
-                            : "Start a conversation"}
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })
-              )}
-            </div>
-          </aside>
-
-          {/* Chat Area */}
-          <section
-            className={`flex flex-1 flex-col ${
-              selectedUser ? "flex" : "hidden md:flex"
-            }`}
-          >
-            {!selectedUser ? (
-              <div className="flex flex-1 items-center justify-center px-6 text-center">
-                <div>
-                  <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-violet-500/20 to-pink-500/20 text-3xl">
-                    💬
-                  </div>
-
-                  <h2 className="text-xl font-semibold">
-                    Your messages
-                  </h2>
-
-                  <p className="mt-2 max-w-sm text-sm leading-6 text-white/40">
-                    Select a connection to start or continue a conversation.
+                  <p className="text-xs text-white/40">
+                    {selected.username
+                      ? `@${selected.username}`
+                      : selected.country || "Nikelink connection"}
                   </p>
                 </div>
               </div>
-            ) : (
-              <>
-                {/* Chat Header */}
-                <div className="flex items-center gap-3 border-b border-white/10 bg-[#080b1c] px-4 py-3">
-                  <button
-                    onClick={() => setSelectedUser(null)}
-                    className="mr-1 text-xl text-white/60 md:hidden"
-                  >
-                    ←
-                  </button>
 
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 via-blue-500 to-pink-500 font-bold">
-                    {getInitial(selectedUser)}
+              <div className="flex-1 space-y-3 overflow-y-auto p-4">
+                {conversation.length === 0 ? (
+                  <div className="flex h-full items-center justify-center text-center text-white/40">
+                    <div>
+                      <div className="mb-3 text-3xl">👋</div>
+                      <p>Start the conversation.</p>
+                    </div>
                   </div>
+                ) : (
+                  conversation.map((message) => {
+                    const mine = message.sender_id === userId;
 
-                  <div>
-                    <h2 className="font-semibold">
-                      {getDisplayName(selectedUser)}
-                    </h2>
+                    return (
+                      <div
+                        key={message.id}
+                        className={`flex ${
+                          mine ? "justify-end" : "justify-start"
+                        }`}
+                      >
+                        <div
+                          className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                            mine
+                              ? "bg-gradient-to-r from-violet-600 to-pink-500"
+                              : "border border-white/10 bg-white/5"
+                          }`}
+                        >
+                          <p className="break-words text-sm">
+                            {message.content}
+                          </p>
 
-                    <p className="text-xs text-white/40">
-                      {selectedUser.username
-                        ? `@${selectedUser.username}`
-                        : selectedUser.country || "Nikelink connection"}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Messages */}
-                <div className="flex-1 overflow-y-auto px-4 py-6">
-                  {selectedMessages.length === 0 ? (
-                    <div className="flex h-full items-center justify-center">
-                      <div className="text-center">
-                        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/5 text-2xl">
-                          👋
+                          <p className="mt-1 text-[10px] text-white/40">
+                            {time(message.created_at)}
+                          </p>
                         </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
 
+              <div className="border-t border-white/10 p-3">
+                <div className="flex gap-2">
+                  <input
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") sendMessage();
+                    }}
+                    placeholder="Write a message..."
+                    className="min-w-0 flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none focus:border-violet-500"
+                  />
+
+                  <button
+                    onClick={sendMessage}
+                    disabled={!text.trim() || sending}
+                    className="rounded-xl bg-violet-600 px-5 font-bold disabled:opacity-40"
+                  >
+                    {sending ? "..." : "Send"}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </section>
+      </div>
+    </main>
+  );
+                      }
