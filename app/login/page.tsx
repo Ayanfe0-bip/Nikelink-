@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
-
-export default function LoginPage() {
+import { useRouter } from "next/navigation";
+export default function LoginPage(const router = useRouter;) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -38,9 +38,9 @@ export default function LoginPage() {
 
         if (error) {
           setMessage(error.message);
-        } else {
-          setMessage("Login successful! Welcome to Nikelink.");
-        }
+       } else {
+  router.replace("/dashboard");
+} 
       }
     } catch (error) {
       setMessage(
