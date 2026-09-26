@@ -716,61 +716,77 @@ export default function Home() {
     </p>
 
   </div>
-</section>
-      {/* FOOTER */}
-      <footer className="border-t border-white/10">
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-8 text-sm text-white/35 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <p>© 2026 Ayanfe Innovation Labs Limited.</p>
-          <p>Nikelink — Connect. Share. Belong.</p>
-        </div>
-      </footer>
-    </main>
-  );
-}
+</section 
+  {/* FOOTER */}
+<footer className="relative overflow-hidden border-t border-blue-300/10 bg-blue-950/20">
+  <div className="pointer-events-none absolute left-1/4 top-0 h-40 w-72 rounded-full bg-blue-500/10 blur-[100px]" />
+  <div className="pointer-events-none absolute right-1/4 bottom-0 h-40 w-72 rounded-full bg-cyan-400/5 blur-[100px]" />
 
-function FeatureCard({
-  number,
-  title,
-  icon,
-  description,
-}: {
-  number: string;
-  title: string;
-  icon: string;
-  description: string;
-}) {
-  return (
-    <div className="group rounded-[2rem] border border-white/10 bg-white/[0.035] p-7 transition duration-300 hover:-translate-y-1 hover:bg-white/[0.06]">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-bold tracking-widest text-white/25">
-          {number}
-        </span>
+  <div className="relative mx-auto max-w-7xl px-5 py-12 sm:px-6 lg:py-14">
+    <div className="flex flex-col gap-10 lg:flex-row lg:items-end lg:justify-between">
+      
+      {/* BRAND */}
+      <div>
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-blue-300/20 bg-blue-500/10 text-lg font-black text-white shadow-[0_0_30px_rgba(37,99,235,0.15)]">
+            N
+          </div>
 
-        <div className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-lg text-white/70">
-          {icon}
+          <div>
+            <p className="text-lg font-black tracking-tight text-white">
+              Nikelink
+            </p>
+            <p className="text-xs text-blue-200/35">
+              Connect. Share. Belong.
+            </p>
+          </div>
         </div>
+
+        <p className="mt-5 max-w-md text-sm leading-6 text-blue-100/40">
+          A global social platform being built to help people discover
+          communities, share ideas and create meaningful connections.
+        </p>
       </div>
 
-      <h3 className="mt-16 text-2xl font-bold">{title}</h3>
+      {/* LINKS */}
+      <div className="flex flex-wrap gap-x-8 gap-y-3 text-sm">
+        <a
+          href="#"
+          className="text-blue-100/45 transition hover:text-cyan-300"
+        >
+          Home
+        </a>
 
-<p className="mt-3 leading-7 text-white/45">{description}</p>
+        <a
+          href="#communities"
+          className="text-blue-100/45 transition hover:text-cyan-300"
+        >
+          Communities
+        </a>
+
+        <a
+          href="#features"
+          className="text-blue-100/45 transition hover:text-cyan-300"
+        >
+          Features
+        </a>
+
+        <a
+          href="#about"
+          className="text-blue-100/45 transition hover:text-cyan-300"
+        >
+          About
+        </a>
+      </div>
     </div>
-  );
-}
 
-function Stat({
-  value,
-  label,
-}: {
-  value: string;
-  label: string;
-}) {
-  return (
-    <div className="px-4 py-7 text-center sm:py-9">
-      <p className="text-2xl font-black sm:text-3xl">{value}</p>
-      <p className="mt-1 text-xs uppercase tracking-widest text-white/30">
-        {label}
+    {/* BOTTOM */}
+    <div className="mt-10 flex flex-col gap-3 border-t border-white/10 pt-6 text-xs text-blue-200/25 sm:flex-row sm:items-center sm:justify-between">
+      <p>© 2026 Ayanfe Innovation Labs Limited. All rights reserved.</p>
+
+      <p className="font-medium tracking-wide">
+        Nikelink · Connect. Share. Belong.
       </p>
     </div>
-  );
-}
+  </div>
+</footer>
