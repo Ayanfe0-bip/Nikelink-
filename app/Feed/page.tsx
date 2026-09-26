@@ -251,4 +251,4 @@ export default function FeedPage() {
       </section>
     </main>
   );
-      }
+}
