@@ -375,25 +375,28 @@ export default function FeedPage() {
                   </p>
 
                   {/* LIKE BUTTON */}
-                  <div className="mt-5 flex items-center gap-2 border-t border-white/10 pt-4">
-                    <button
-                      onClick={() => handleLike(post.id)}
-                      className={`rounded-xl px-3 py-2 text-sm transition ${
-                        isLiked
-                          ? "bg-pink-500/10 text-pink-400"
-                          : "text-white/45 hover:bg-white/5 hover:text-pink-400"
-                      }`}
-                    >
-                      {isLiked ? "♥" : "♡"} Like
-                      {count > 0 && (
-                        <span className="ml-1 font-bold">
-                          {count}
-                        </span>
-                      )}
-                    </button>
+<div className="mt-5 flex items-center gap-2 border-t border-white/10 pt-4">
+  <button
+    onClick={() => handleLike(post.id)}
+    className={`rounded-xl px-3 py-2 text-sm transition ${
+      isLiked
+        ? "bg-pink-500/10 text-pink-400"
+        : "text-white/45 hover:bg-white/5 hover:text-pink-400"
+    }`}
+  >
+    {isLiked ? "♥" : "♡"} Like
+    {count > 0 && (
+      <span className="ml-1 font-bold">
+        {count}
+      </span>
+    )}
+  </button>
 
-                    <button className="rounded-xl px-3 py-2 text-sm text-white/45 transition hover:bg-white/5 hover:text-blue-400">
-                      ♧ Comment
-                    </button>
+  <button className="rounded-xl px-3 py-2 text-sm text-white/45 transition hover:bg-white/5 hover:text-blue-400">
+    ♧ Comment
+  </button>
 
-                    <button className="rounded-xl px-3 py-2 text-sm text-white
+  <button className="rounded-xl px-3 py-2 text-sm text-white/45 transition hover:bg-white/5 hover:text-violet-400">
+    ↗ Share
+  </button>
+</div>
