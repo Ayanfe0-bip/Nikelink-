@@ -1,78 +1,72 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 
-export default function LoginSecurityPage() {
+export default function SecurityPage() {
   const router = useRouter();
 
-  const [email, setEmail] = useState("");
-  const [userId, setUserId] = useState("");
-  const [createdAt, setCreatedAt] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [signingOut, setSigningOut] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [updating, setUpdating] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    loadAccount();
-  }, []);
+  async function updatePassword(
+    e: React.FormEvent<HTMLFormElement>
+  ) {
+    e.preventDefault();
 
-  async function loadAccount() {
-    setLoading(true);
-    setError("");
-
-    const { data, error } = await supabase.auth.getUser();
-
-    if (error || !data.user) {
-      setError("You are not signed in.");
-      setLoading(false);
-      return;
-    }
-
-    const user = data.user;
-
-    setEmail(user.email || "");
-    setUserId(user.id);
-
-    if (user.created_at) {
-      setCreatedAt(
-        new Date(user.created_at).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        })
-      );
-    }
-
-    setLoading(false);
-  }
-
-  async function signOut() {
-    setSigningOut(true);
-    setError("");
     setMessage("");
+    setError("");
 
-    const { error } = await supabase.auth.signOut();
-
-    if (error) {
-      setError(error.message);
-      setSigningOut(false);
+    if (!newPassword || !confirmPassword) {
+      setError("Please enter your new password.");
       return;
     }
 
-    router.push("/");
+    if (newPassword.length < 8) {
+      setError("Your password must be at least 8 characters.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError("The passwords do not match.");
+      return;
+    }
+
+    setUpdating(true);
+
+    const { error: updateError } =
+      await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+    if (updateError) {
+      setError(updateError.message);
+      setUpdating(false);
+      return;
+    }
+
+    setNewPassword("");
+    setConfirmPassword("");
+    setMessage("Your password has been updated successfully.");
+    setUpdating(false);
   }
 
   return (
     <main className="min-h-screen bg-[#050816] text-white">
       <div className="mx-auto min-h-screen max-w-2xl px-4 pb-10">
-        {/* Header */}
+
+        {/* HEADER */}
         <header className="sticky top-0 z-20 -mx-4 border-b border-white/10 bg-[#050816]/90 px-4 py-4 backdrop-blur-xl">
           <div className="flex items-center gap-3">
+
             <button
-              onClick={() => router.push("/settings")}
+              onClick={() =>
+                router.push("/settings/login-security")
+              }
               className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-xl transition hover:bg-white/[0.08]"
               aria-label="Go back"
             >
@@ -80,187 +74,163 @@ export default function LoginSecurityPage() {
             </button>
 
             <div>
-              <h1 className="text-lg font-semibold">Login & security</h1>
+              <h1 className="text-lg font-semibold">
+                Change password
+              </h1>
+
               <p className="text-xs text-white/45">
-                Manage your account security
+                Update your Nikelink password
               </p>
             </div>
+
           </div>
         </header>
 
-        <section className="space-y-5 pt-6">
-          {/* Account */}
-          <div>
-            <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wider text-white/40">
-              Account
-            </p>
+        {/* CONTENT */}
+        <section className="pt-6">
 
-            <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035]">
-              <div className="flex items-center gap-4 border-b border-white/10 p-4">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-violet-500 to-pink-500 text-lg font-bold">
-                  {email ? email.charAt(0).toUpperCase() : "N"}
-                </div>
-
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-white">
-                    {loading ? "Loading..." : email || "Nikelink account"}
-                  </p>
-
-                  <p className="mt-1 truncate text-xs text-white/45">
-                    Your Nikelink account
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-px bg-white/10 sm:grid-cols-2">
-                <div className="bg-[#080b1d] p-4">
-                  <p className="text-xs text-white/40">Account created</p>
-                  <p className="mt-1 text-sm text-white/80">
-                    {loading ? "Loading..." : createdAt || "Not available"}
-                  </p>
-                </div>
-
-                <div className="bg-[#080b1d] p-4">
-                  <p className="text-xs text-white/40">Account ID</p>
-                  <p className="mt-1 truncate text-sm text-white/80">
-                    {loading
-                      ? "Loading..."
-                      : userId
-                        ? `${userId.slice(0, 8)}••••${userId.slice(-4)}`
-                        : "Not available"}
-                  </p>
-                </div>
-              </div>
+          {/* INTRO */}
+          <div className="mb-6 rounded-3xl border border-white/10 bg-white/[0.035] p-5">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-500/10 text-2xl">
+              🔐
             </div>
+
+            <h2 className="text-xl font-bold">
+              Create a new password
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-white/45">
+              Choose a strong password that you do not use
+              on other websites.
+            </p>
           </div>
 
-          {/* Security status */}
-          <div>
-            <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wider text-white/40">
-              Security status
-            </p>
+          {/* FORM */}
+          <form
+            onSubmit={updatePassword}
+            className="rounded-3xl border border-white/10 bg-white/[0.035] p-5"
+          >
 
-            <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035]">
-              <div className="flex items-center gap-4 p-4">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-xl">
-                  🔐
-                </div>
+            {/* NEW PASSWORD */}
+            <div>
+              <label
+                htmlFor="new-password"
+                className="mb-2 block text-sm font-medium text-white/80"
+              >
+                New password
+              </label>
 
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-white">
-                    Account protection
-                  </p>
-                  <p className="mt-1 text-xs leading-5 text-white/45">
-                    Your account uses Nikelink authentication to protect your
-                    login.
-                  </p>
-                </div>
+              <input
+                id="new-password"
+                type="password"
+                value={newPassword}
+                onChange={(e) =>
+                  setNewPassword(e.target.value)
+                }
+                placeholder="Enter your new password"
+                autoComplete="new-password"
+                minLength={8}
+                className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-white/25 focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20"
+              />
 
-                <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-medium text-emerald-300">
-                  Active
-                </span>
-              </div>
+              <p className="mt-2 text-xs text-white/30">
+                Use at least 8 characters.
+              </p>
             </div>
-          </div>
 
-          {/* Password */}
-          <div>
-            <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wider text-white/40">
-              Password
-            </p>
+            {/* CONFIRM PASSWORD */}
+            <div className="mt-5">
+              <label
+                htmlFor="confirm-password"
+                className="mb-2 block text-sm font-medium text-white/80"
+              >
+                Confirm new password
+              </label>
 
+              <input
+                id="confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) =>
+                  setConfirmPassword(e.target.value)
+                }
+                placeholder="Enter the password again"
+                autoComplete="new-password"
+                minLength={8}
+                className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-white/25 focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20"
+              />
+            </div>
+
+            {/* ERROR */}
+            {error && (
+              <div className="mt-5 rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm leading-5 text-red-300">
+                {error}
+              </div>
+            )}
+
+            {/* SUCCESS */}
+            {message && (
+              <div className="mt-5 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm leading-5 text-emerald-300">
+                {message}
+              </div>
+            )}
+
+            {/* BUTTON */}
             <button
-              onClick={() => router.push("/settings/security")}
-              className="flex w-full items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-left transition hover:bg-white/[0.06]"
+              type="submit"
+              disabled={
+                updating ||
+                !newPassword ||
+                !confirmPassword
+              }
+              className="mt-6 w-full rounded-2xl bg-gradient-to-r from-violet-600 to-blue-600 px-4 py-3.5 text-sm font-bold transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-violet-500/10 text-xl">
-                🔑
-              </div>
-
-              <div className="flex-1">
-                <p className="text-sm font-medium text-white">
-                  Change password
-                </p>
-
-                <p className="mt-1 text-xs text-white/45">
-                  Update your Nikelink password
-                </p>
-              </div>
-
-              <span className="text-lg text-white/30">›</span>
+              {updating
+                ? "Updating password..."
+                : "Update password"}
             </button>
-          </div>
 
-          {/* Login session */}
-          <div>
-            <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wider text-white/40">
-              Login session
-            </p>
+          </form>
 
-            <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035]">
-              <div className="flex items-center gap-4 p-4">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-xl">
-                  📱
-                </div>
+          {/* SECURITY NOTE */}
+          <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+            <div className="flex gap-3">
 
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-white">
-                    Current session
-                  </p>
+              <span className="text-lg">
+                🛡️
+              </span>
 
-                  <p className="mt-1 text-xs leading-5 text-white/45">
-                    This is the device currently signed in to your Nikelink
-                    account.
-                  </p>
-                </div>
+              <div>
+                <p className="text-sm font-medium text-white/80">
+                  Keep your account secure
+                </p>
 
-                <span className="rounded-full border border-blue-400/20 bg-blue-400/10 px-2.5 py-1 text-[11px] font-medium text-blue-300">
-                  Current
-                </span>
+                <p className="mt-1 text-xs leading-5 text-white/35">
+                  Never share your Nikelink password with
+                  anyone. Nikelink will never ask you to send
+                  your password through a message.
+                </p>
               </div>
+
             </div>
           </div>
 
-          {/* Future security features */}
-          <div>
-            <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wider text-white/40">
-              More security
-            </p>
+          {/* BACK */}
+          <button
+            onClick={() =>
+              router.push("/settings/login-security")
+            }
+            className="mt-6 w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-medium text-white/60 transition hover:bg-white/[0.06] hover:text-white"
+          >
+            Back to Login & security
+          </button>
 
-            <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035]">
-              <div className="flex items-center gap-4 border-b border-white/10 p-4">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-pink-500/10 text-xl">
-                  🛡️
-                </div>
+          <p className="pb-6 pt-6 text-center text-xs text-white/20">
+            Nikelink • Connect. Share. Belong.
+          </p>
 
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-white">
-                    Two-factor authentication
-                  </p>
-
-                  <p className="mt-1 text-xs text-white/45">
-                    Extra protection for your account
-                  </p>
-                </div>
-
-                <span className="text-xs text-white/30">Coming soon</span>
-              </div>
-
-              <div className="flex items-center gap-4 p-4">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-cyan-500/10 text-xl">
-                  💻
-                </div>
-
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-white">
-                    Active devices
-                  </p>
-
-                  <p className="mt-1 text-xs text-white/45">
-                    View and manage devices signed in to your account
-                  </p>
-                </div>
-
-                <span className="text-xs text-white/30">Coming soon</span>
-              </div>
-            </div>
+        </section>
+      </div>
+    </main>
+  );
+                                 }
