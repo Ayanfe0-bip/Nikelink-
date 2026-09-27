@@ -849,4 +849,6 @@ export default function DiscoverPage() {
 
   </div>
 </nav>
-
+/main>
+  );
+    }
