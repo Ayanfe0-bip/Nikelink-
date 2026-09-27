@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "../../../lib/supabase";
+import { supabase } from "../../lib/supabase";
 
 type Profile = {
   id: string;
@@ -206,6 +206,7 @@ export default function PublicProfilePage() {
       <main className="flex min-h-screen items-center justify-center bg-[#050816] text-white">
         <div className="text-center">
           <div className="mx-auto mb-4 h-12 w-12 animate-pulse rounded-full bg-gradient-to-br from-blue-500/40 to-violet-500/40" />
+
           <p className="text-sm text-white/45">
             Loading profile...
           </p>
@@ -248,7 +249,9 @@ export default function PublicProfilePage() {
       {/* BACKGROUND */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute -left-40 -top-40 h-96 w-96 rounded-full bg-blue-600/10 blur-[130px]" />
+
         <div className="absolute right-[-120px] top-1/3 h-[30rem] w-[30rem] rounded-full bg-violet-600/10 blur-[150px]" />
+
         <div className="absolute bottom-[-180px] left-1/3 h-96 w-96 rounded-full bg-fuchsia-600/5 blur-[130px]" />
       </div>
 
@@ -514,7 +517,7 @@ export default function PublicProfilePage() {
           </button>
 
           <button
-            onClick={() => router.push("/Feed")}
+            onClick={() => router.push("/feed")}
             className="flex flex-col items-center gap-1 px-4 py-1 text-white/40 transition hover:text-white"
           >
             <span className="text-lg">◉</span>
@@ -536,4 +539,4 @@ export default function PublicProfilePage() {
       </nav>
     </main>
   );
-  }
+                  }
