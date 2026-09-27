@@ -308,11 +308,7 @@ export default function SettingsPage() {
 
             <div className="border-t border-white/10" />
 
-            <button
-              onClick={() =>
-                showMessage(
-                  "Privacy controls are coming next."
-                )
+          onClick={() => router.push("/settings/blocked")
               }
               className="flex w-full items-center justify-between px-5 py-4 text-left transition hover:bg-white/[0.04]"
             >
