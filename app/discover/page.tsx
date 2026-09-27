@@ -848,7 +848,7 @@ export default function DiscoverPage() {
     </button>
 
   </div>
-</nav>
-/main>
+      </nav>
+    </main>
   );
-    }
+}
