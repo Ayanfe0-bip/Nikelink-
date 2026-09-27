@@ -1,0 +1,209 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "../../lib/supabase";
+
+export default function ChangePasswordPage() {
+  const router = useRouter();
+
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  async function handleChangePassword(
+    e: React.FormEvent<HTMLFormElement>
+  ) {
+    e.preventDefault();
+
+    setMessage("");
+    setError("");
+
+    if (newPassword.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    setSaving(true);
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      setError("Your session has expired. Please log in again.");
+      setSaving(false);
+      return;
+    }
+
+    const { error: updateError } =
+      await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+    if (updateError) {
+      setError(updateError.message);
+      setSaving(false);
+      return;
+    }
+
+    setNewPassword("");
+    setConfirmPassword("");
+
+    setMessage("Your password has been updated successfully.");
+    setSaving(false);
+  }
+
+  return (
+    <main className="min-h-screen bg-[#050816] px-4 py-6 text-white">
+      <div className="mx-auto w-full max-w-xl">
+        {/* Header */}
+        <div className="mb-8 flex items-center gap-4">
+          <button
+            onClick={() => router.push("/settings")}
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-xl transition hover:bg-white/[0.08]"
+          >
+            ←
+          </button>
+
+          <div>
+            <h1 className="text-2xl font-bold">
+              Change password
+            </h1>
+
+            <p className="mt-1 text-sm text-white/45">
+              Update your Nikelink account password
+            </p>
+          </div>
+        </div>
+
+        {/* Security card */}
+        <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-5 shadow-2xl shadow-black/20">
+          <div className="mb-6">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500/20 to-blue-500/20 text-2xl">
+              🔐
+            </div>
+
+            <h2 className="text-lg font-semibold">
+              Create a new password
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-white/45">
+              Use a strong password that you do not use on another
+              website or service.
+            </p>
+          </div>
+
+          <form onSubmit={handleChangePassword} className="space-y-5">
+            {/* New password */}
+            <div>
+              <label className="mb-2 block text-sm font-medium text-white/75">
+                New password
+              </label>
+
+              <div className="relative">
+                <input
+                  type={showNew ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password"
+                  autoComplete="new-password"
+                  className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 pr-16 text-white outline-none transition placeholder:text-white/25 focus:border-violet-400/50 focus:bg-white/[0.04]"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowNew(!showNew)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl px-3 py-2 text-xs text-white/45 hover:bg-white/[0.06] hover:text-white"
+                >
+                  {showNew ? "Hide" : "Show"}
+                </button>
+              </div>
+
+              <p className="mt-2 text-xs text-white/30">
+                Minimum 8 characters
+              </p>
+            </div>
+
+            {/* Confirm password */}
+            <div>
+              <label className="mb-2 block text-sm font-medium text-white/75">
+                Confirm new password
+              </label>
+
+              <div className="relative">
+                <input
+                  type={showConfirm ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) =>
+                    setConfirmPassword(e.target.value)
+                  }
+                  placeholder="Confirm new password"
+                  autoComplete="new-password"
+                  className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 pr-16 text-white outline-none transition placeholder:text-white/25 focus:border-violet-400/50 focus:bg-white/[0.04]"
+                />
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowConfirm(!showConfirm)
+                  }
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl px-3 py-2 text-xs text-white/45 hover:bg-white/[0.06] hover:text-white"
+                >
+                  {showConfirm ? "Hide" : "Show"}
+                </button>
+              </div>
+            </div>
+
+            {/* Error */}
+            {error && (
+              <div className="rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                {error}
+              </div>
+            )}
+
+            {/* Success */}
+            {message && (
+              <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+                {message}
+              </div>
+            )}
+
+            {/* Button */}
+            <button
+              type="submit"
+              disabled={saving}
+              className="w-full rounded-2xl bg-gradient-to-r from-violet-600 via-blue-600 to-cyan-500 px-5 py-4 font-semibold text-white shadow-lg shadow-violet-900/20 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {saving ? "Updating password..." : "Update password"}
+            </button>
+          </form>
+        </div>
+
+        {/* Security note */}
+        <div className="mt-5 rounded-3xl border border-white/10 bg-white/[0.025] p-5">
+          <p className="text-sm font-medium text-white/70">
+            🔒 Account security
+          </p>
+
+          <p className="mt-2 text-sm leading-6 text-white/35">
+            Your password is securely handled by Nikelink authentication.
+            Never share your password with anyone.
+          </p>
+        </div>
+      </div>
+    </main>
+  );
+}
