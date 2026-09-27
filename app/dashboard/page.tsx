@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 
-const navItems = [
+/* PRIMARY NAVIGATION */
+const primaryNavItems = [
   {
     name: "Home",
     icon: "⌂",
@@ -16,7 +17,7 @@ const navItems = [
     route: "/discover",
   },
   {
-    name: "Communities",
+    name: "Community",
     icon: "◈",
     route: "/communities",
   },
@@ -24,11 +25,6 @@ const navItems = [
     name: "Messages",
     icon: "◌",
     route: "/messages",
-  },
-  {
-    name: "Notifications",
-    icon: "♢",
-    route: "/notifications",
   },
 ];
 
@@ -101,9 +97,7 @@ export default function DashboardPage() {
   function navigateTo(route: string) {
     if (navigating) return;
 
-    if (pathname === route) {
-      return;
-    }
+    if (pathname === route) return;
 
     setNavigating(route);
     router.push(route);
@@ -140,6 +134,12 @@ export default function DashboardPage() {
       )
       .join("") || "N";
 
+  const notificationsActive =
+    pathname === "/notifications";
+
+  const createPostActive =
+    pathname === "/feed";
+
   return (
     <main className="min-h-screen bg-[#050816] pb-24 text-white md:pb-0">
 
@@ -154,12 +154,15 @@ export default function DashboardPage() {
 
       {/* HEADER */}
       <header className="sticky top-0 z-50 border-b border-white/[0.07] bg-[#050816]/90 backdrop-blur-2xl">
-        <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-5 sm:px-8">
+
+        <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-4 sm:px-8">
 
           {/* LOGO */}
           <button
+            type="button"
             onClick={() => navigateTo("/dashboard")}
             className="flex items-center gap-3"
+            aria-label="Go to Nikelink home"
           >
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 font-black shadow-lg shadow-blue-500/20">
               N
@@ -170,18 +173,71 @@ export default function DashboardPage() {
             </span>
           </button>
 
-          {/* EMAIL */}
-          <div className="hidden max-w-[260px] truncate text-sm text-white/35 sm:block">
-            {email}
-          </div>
+          {/* RIGHT SIDE ACTIONS */}
+          <div className="flex items-center gap-2 sm:gap-3">
 
-          {/* SIGN OUT */}
-          <button
-            onClick={handleSignOut}
-            className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-white/60 transition hover:border-white/20 hover:bg-white/5 hover:text-white"
-          >
-            Sign out
-          </button>
+            {/* EMAIL - DESKTOP */}
+            <div className="mr-2 hidden max-w-[220px] truncate text-sm text-white/35 lg:block">
+              {email}
+            </div>
+
+            {/* CREATE POST */}
+            <button
+              type="button"
+              onClick={() => navigateTo("/feed")}
+              aria-label="Create post"
+              title="Create post"
+              className={`group flex h-11 w-11 items-center justify-center rounded-full border transition duration-300 ${
+                createPostActive
+                  ? "border-blue-400/40 bg-blue-500/10 text-blue-300"
+                  : "border-white/10 bg-black text-white shadow-lg shadow-black/40 hover:border-blue-400/30 hover:bg-[#02030a] hover:text-blue-300"
+              }`}
+            >
+              <span className="text-2xl font-light leading-none transition-transform duration-300 group-hover:rotate-90">
+                +
+              </span>
+            </button>
+
+            {/* NOTIFICATIONS */}
+            <button
+              type="button"
+              onClick={() => navigateTo("/notifications")}
+              aria-label="Notifications"
+              title="Notifications"
+              className={`relative flex h-11 w-11 items-center justify-center rounded-full border transition duration-300 ${
+                notificationsActive
+                  ? "border-blue-400/40 bg-blue-500/10 text-blue-300"
+                  : "border-white/10 bg-white/[0.035] text-white/65 hover:border-blue-400/30 hover:bg-white/[0.07] hover:text-white"
+              }`}
+            >
+              {/* BELL ICON */}
+              <svg
+                viewBox="0 0 24 24"
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+                <path d="M10 21h4" />
+              </svg>
+
+              {/* NOTIFICATION DOT */}
+              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-fuchsia-500 shadow-lg shadow-fuchsia-500/50" />
+            </button>
+
+            {/* SIGN OUT */}
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="ml-1 hidden rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-white/60 transition hover:border-white/20 hover:bg-white/5 hover:text-white sm:block"
+            >
+              Sign out
+            </button>
+
+          </div>
         </div>
       </header>
 
@@ -192,11 +248,12 @@ export default function DashboardPage() {
 
           <nav className="space-y-2">
 
-            {navItems.map((item) => {
+            {primaryNavItems.map((item) => {
               const active = pathname === item.route;
 
               return (
                 <button
+                  type="button"
                   key={item.name}
                   onClick={() => navigateTo(item.route)}
                   className={`flex w-full items-center gap-4 rounded-xl px-4 py-3.5 text-left text-sm font-semibold transition ${
@@ -209,9 +266,7 @@ export default function DashboardPage() {
                     {item.icon}
                   </span>
 
-                  <span>
-                    {item.name}
-                  </span>
+                  <span>{item.name}</span>
 
                   {active && (
                     <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white" />
@@ -226,6 +281,7 @@ export default function DashboardPage() {
           <div className="mt-10 border-t border-white/[0.07] pt-6">
 
             <button
+              type="button"
               onClick={() => navigateTo("/profile")}
               className={`flex w-full items-center gap-4 rounded-xl px-4 py-3.5 text-left text-sm font-semibold transition ${
                 pathname === "/profile"
@@ -241,6 +297,7 @@ export default function DashboardPage() {
             </button>
 
             <button
+              type="button"
               onClick={() => navigateTo("/settings")}
               className={`mt-2 flex w-full items-center gap-4 rounded-xl px-4 py-3.5 text-left text-sm font-semibold transition ${
                 pathname === "/settings"
@@ -256,6 +313,7 @@ export default function DashboardPage() {
             </button>
 
           </div>
+
         </aside>
 
         {/* MAIN CONTENT */}
@@ -264,6 +322,7 @@ export default function DashboardPage() {
           <div className="mx-auto max-w-5xl">
 
             {/* PROFILE HERO */}
+                        {/* PROFILE HERO */}
             <section className="relative mb-8 overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br from-blue-600/20 via-purple-600/10 to-transparent p-6 shadow-2xl shadow-black/10 sm:p-8">
 
               <div className="absolute right-[-100px] top-[-120px] h-72 w-72 rounded-full bg-blue-500/10 blur-[100px]" />
@@ -303,6 +362,7 @@ export default function DashboardPage() {
                 </div>
 
                 <button
+                  type="button"
                   onClick={() => navigateTo("/profile")}
                   className="rounded-xl border border-white/10 px-5 py-3 text-sm font-semibold text-white/65 transition hover:border-white/20 hover:bg-white/10 hover:text-white"
                 >
@@ -453,16 +513,17 @@ export default function DashboardPage() {
         </section>
       </div>
 
-      {/* MOBILE NAVIGATION */}
+      {/* MOBILE BOTTOM NAVIGATION */}
       <nav className="fixed bottom-0 left-0 right-0 z-[100] border-t border-white/[0.08] bg-[#050816]/95 shadow-2xl shadow-black/30 backdrop-blur-2xl md:hidden">
 
-        <div className="mx-auto grid h-[76px] max-w-xl grid-cols-5">
+        <div className="mx-auto grid h-[76px] max-w-xl grid-cols-4">
 
-          {navItems.map((item) => {
+          {primaryNavItems.map((item) => {
             const active = pathname === item.route;
 
             return (
               <button
+                type="button"
                 key={item.name}
                 onClick={() => navigateTo(item.route)}
                 className={`relative flex flex-col items-center justify-center gap-1 transition ${
@@ -478,17 +539,15 @@ export default function DashboardPage() {
                 )}
 
                 <span
-                  className={`text-xl ${
+                  className={`text-xl transition-transform ${
                     active ? "scale-110" : ""
-                  } transition-transform`}
+                  }`}
                 >
                   {item.icon}
                 </span>
 
                 <span className="text-[10px] font-semibold">
-                  {item.name === "Communities"
-                    ? "Community"
-                    : item.name}
+                  {item.name}
                 </span>
 
               </button>
@@ -499,10 +558,11 @@ export default function DashboardPage() {
       </nav>
 
       {/* NAVIGATION LOADING */}
+      
       {navigating && (
         <div className="pointer-events-none fixed inset-x-0 top-0 z-[200] h-0.5 bg-gradient-to-r from-blue-500 via-violet-500 to-fuchsia-500" />
       )}
-
+      
     </main>
   );
 }
@@ -522,6 +582,7 @@ function DashboardCard({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className="group rounded-[1.7rem] border border-white/10 bg-white/[0.035] p-6 text-left transition duration-300 hover:-translate-y-1 hover:border-blue-400/30 hover:bg-white/[0.06] active:scale-[0.99]"
     >
@@ -559,6 +620,7 @@ function FeatureCard({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className="group flex items-start gap-4 rounded-[1.7rem] border border-white/10 bg-white/[0.035] p-5 text-left transition duration-300 hover:-translate-y-1 hover:border-blue-400/30 hover:bg-white/[0.06] active:scale-[0.99]"
     >
@@ -587,4 +649,5 @@ function FeatureCard({
       </div>
     </button>
   );
-              }
+}
+            
