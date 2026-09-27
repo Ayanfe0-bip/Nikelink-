@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "../lib/supabase";
 
 type Post = {
   id: string;
@@ -19,424 +19,166 @@ type Comment = {
   created_at: string;
 };
 
-type Profile = {
-  id: string;
-  full_name: string | null;
-  username: string | null;
-};
-
 export default function FeedPage() {
   const router = useRouter();
 
-  const [user, setUser] = useState<any>(null);
-  const [profileName, setProfileName] = useState("You");
-
+  const [userId, setUserId] = useState("");
+  const [userName, setUserName] = useState("Nikelink User");
   const [posts, setPosts] = useState<Post[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
-  const [commentProfiles, setCommentProfiles] = useState<
-    Record<string, Profile>
-  >({});
-
-  const [newPost, setNewPost] = useState("");
   const [commentText, setCommentText] = useState<Record<string, string>>({});
-
+  const [openComments, setOpenComments] = useState<Record<string, boolean>>({});
+  const [submittingComment, setSubmittingComment] = useState<string | null>(
+    null
+  );
+  const [newPost, setNewPost] = useState("");
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
-
-  const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
-  const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
-
-  const [commentCounts, setCommentCounts] = useState<
-    Record<string, number>
-  >({});
-
-  const [openComments, setOpenComments] = useState<Record<string, boolean>>(
-    {}
-  );
-
-  const [submittingComment, setSubmittingComment] = useState<
-    Record<string, boolean>
-  >({});
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
-    loadFeed();
-  }, []);
+    async function loadFeed() {
+      const { data: userData, error: userError } =
+        await supabase.auth.getUser();
 
-  async function loadFeed() {
-    setLoading(true);
-
-    try {
-      const {
-        data: { user: currentUser },
-      } = await supabase.auth.getUser();
-
-      if (!currentUser) {
-        router.push("/login");
+      if (userError || !userData.user) {
+        router.replace("/login");
         return;
       }
 
-      setUser(currentUser);
+      const currentUserId = userData.user.id;
+      setUserId(currentUserId);
 
-      // Load current user's profile
       const { data: profile } = await supabase
         .from("profiles")
         .select("full_name, username")
-        .eq("id", currentUser.id)
+        .eq("id", currentUserId)
         .maybeSingle();
 
       if (profile) {
-        setProfileName(
-          profile.full_name || profile.username || currentUser.email || "You"
+        setUserName(
+          profile.full_name || profile.username || "Nikelink User"
         );
       }
 
-      // Load posts
-      const { data: postData, error: postError } = await supabase
-        .from("posts")
-        .select("id, user_id, content, created_at")
-        .order("created_at", { ascending: false });
+      await loadPosts();
+      await loadComments();
 
-      if (postError) {
-        console.error("Posts error:", postError);
-        return;
-      }
-
-      const loadedPosts = postData || [];
-      setPosts(loadedPosts);
-
-      if (loadedPosts.length === 0) {
-        setComments([]);
-        setCommentCounts({});
-        setLikeCounts({});
-        setLikedPosts({});
-        return;
-      }
-
-      const postIds = loadedPosts.map((post) => post.id);
-
-      // -------------------------
-      // LOAD LIKES
-      // -------------------------
-      const { data: likeData, error: likeError } = await supabase
-        .from("likes")
-        .select("id, post_id, user_id")
-        .in("post_id", postIds);
-
-      if (likeError) {
-        console.error("Likes error:", likeError);
-      }
-
-      const counts: Record<string, number> = {};
-      const userLikes: Record<string, boolean> = {};
-
-      postIds.forEach((id) => {
-        counts[id] = 0;
-        userLikes[id] = false;
-      });
-
-      (likeData || []).forEach((like) => {
-        counts[like.post_id] = (counts[like.post_id] || 0) + 1;
-
-        if (like.user_id === currentUser.id) {
-          userLikes[like.post_id] = true;
-        }
-      });
-
-      setLikeCounts(counts);
-      setLikedPosts(userLikes);
-
-      // -------------------------
-      // LOAD COMMENTS
-      // -------------------------
-      const { data: commentData, error: commentError } = await supabase
-        .from("comments")
-        .select("id, post_id, user_id, content, created_at")
-        .in("post_id", postIds)
-        .order("created_at", { ascending: true });
-
-      if (commentError) {
-        console.error("Comments error:", commentError);
-      }
-
-      const loadedComments = commentData || [];
-      setComments(loadedComments);
-
-      const countsComments: Record<string, number> = {};
-
-      postIds.forEach((id) => {
-        countsComments[id] = 0;
-      });
-
-      loadedComments.forEach((comment) => {
-        countsComments[comment.post_id] =
-          (countsComments[comment.post_id] || 0) + 1;
-      });
-
-      setCommentCounts(countsComments);
-
-      // -------------------------
-      // LOAD COMMENT PROFILES
-      // -------------------------
-      const commenterIds = Array.from(
-        new Set(loadedComments.map((comment) => comment.user_id))
-      );
-
-      if (commenterIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("id, full_name, username")
-          .in("id", commenterIds);
-
-        const profileMap: Record<string, Profile> = {};
-
-        (profiles || []).forEach((profile) => {
-          profileMap[profile.id] = profile;
-        });
-
-        setCommentProfiles(profileMap);
-      } else {
-        setCommentProfiles({});
-      }
-    } finally {
       setLoading(false);
     }
-  }
 
-  // -------------------------
-  // CREATE POST
-  // -------------------------
-  async function createPost() {
-    if (!user || !newPost.trim()) return;
-
-    setPosting(true);
-
-    try {
+    async function loadPosts() {
       const { data, error } = await supabase
         .from("posts")
-        .insert({
-          user_id: user.id,
-          content: newPost.trim(),
-        })
-        .select("id, user_id, content, created_at")
-        .single();
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (!error && data) {
+        setPosts(data);
+      }
+    }
+
+    async function loadComments() {
+      const { data, error } = await supabase
+        .from("comments")
+        .select("id, post_id, user_id, content, created_at")
+        .order("created_at", { ascending: true });
 
       if (error) {
-        console.error("Create post error:", error);
-        alert(error.message);
-        return;
+        console.error("Comments error:", error);
+      } else {
+        setComments(data || []);
       }
+    }
 
-      if (data) {
-        setPosts((current) => [data, ...current]);
+    loadFeed();
+  }, [router]);
 
-        setLikeCounts((current) => ({
-          ...current,
-          [data.id]: 0,
-        }));
+  async function handleCreatePost(
+    e: React.FormEvent<HTMLFormElement>
+  ) {
+    e.preventDefault();
 
-        setLikedPosts((current) => ({
-          ...current,
-          [data.id]: false,
-        }));
+    if (!userId || !newPost.trim()) return;
 
-        setCommentCounts((current) => ({
-          ...current,
-          [data.id]: 0,
-        }));
-      }
+    setPosting(true);
+    setMessage("");
 
-      setNewPost("");
-    } finally {
+    const content = newPost.trim();
+
+    const { data, error } = await supabase
+      .from("posts")
+      .insert({
+        user_id: userId,
+        content,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      setMessage(error.message);
       setPosting(false);
+      return;
     }
+
+    if (data) {
+      setPosts((current) => [data, ...current]);
+    }
+
+    setNewPost("");
+    setMessage("Post published.");
+    setPosting(false);
+
+    setTimeout(() => {
+      setMessage("");
+    }, 2000);
   }
 
-  // -------------------------
-  // LIKE
-  // -------------------------
-  async function handleLike(postId: string) {
-    if (!user) return;
+  async function submitComment(postId: string) {
+    const content = (commentText[postId] || "").trim();
 
-    const alreadyLiked = likedPosts[postId];
+    if (!content || !userId) return;
 
-    // Optimistic UI
-    setLikedPosts((current) => ({
-      ...current,
-      [postId]: !alreadyLiked,
-    }));
+    setSubmittingComment(postId);
+    setMessage("");
 
-    setLikeCounts((current) => ({
-      ...current,
-      [postId]: Math.max(
-        0,
-        (current[postId] || 0) + (alreadyLiked ? -1 : 1)
-      ),
-    }));
-
-    if (alreadyLiked) {
-      const { error } = await supabase
-        .from("likes")
-        .delete()
-        .eq("post_id", postId)
-        .eq("user_id", user.id);
-
-      if (error) {
-        console.error("Unlike error:", error);
-
-        setLikedPosts((current) => ({
-          ...current,
-          [postId]: true,
-        }));
-
-        setLikeCounts((current) => ({
-          ...current,
-          [postId]: (current[postId] || 0) + 1,
-        }));
-      }
-    } else {
-      const { error } = await supabase.from("likes").insert({
+    const { data, error } = await supabase
+      .from("comments")
+      .insert({
         post_id: postId,
-        user_id: user.id,
-      });
+        user_id: userId,
+        content,
+      })
+      .select("id, post_id, user_id, content, created_at")
+      .single();
 
-      if (error) {
-        console.error("Like error:", error);
-
-        setLikedPosts((current) => ({
-          ...current,
-          [postId]: false,
-        }));
-
-        setLikeCounts((current) => ({
-          ...current,
-          [postId]: Math.max(0, (current[postId] || 0) - 1),
-        }));
-      }
+    if (error) {
+      console.error("Comment error:", error);
+      setMessage(error.message);
+      setSubmittingComment(null);
+      return;
     }
-  }
 
-  // -------------------------
-  // TOGGLE COMMENTS
-  // -------------------------
-  function toggleComments(postId: string) {
-    setOpenComments((current) => ({
+    if (data) {
+      setComments((current) => [...current, data]);
+    }
+
+    setCommentText((current) => ({
       ...current,
-      [postId]: !current[postId],
+      [postId]: "",
     }));
-  }
 
-  // -------------------------
-  // ADD COMMENT
-  // -------------------------
-  async function addComment(postId: string) {
-    if (!user) return;
-
-    const text = commentText[postId]?.trim();
-
-    if (!text) return;
-
-    setSubmittingComment((current) => ({
+    setOpenComments((current) => ({
       ...current,
       [postId]: true,
     }));
 
-    try {
-      const { data, error } = await supabase
-        .from("comments")
-        .insert({
-          post_id: postId,
-          user_id: user.id,
-          content: text,
-        })
-        .select("id, post_id, user_id, content, created_at")
-        .single();
-
-      if (error) {
-        console.error("Comment error:", error);
-        alert(error.message);
-        return;
-      }
-
-      if (data) {
-        setComments((current) => [...current, data]);
-
-        setCommentCounts((current) => ({
-          ...current,
-          [postId]: (current[postId] || 0) + 1,
-        }));
-
-        setCommentProfiles((current) => ({
-          ...current,
-          [user.id]: {
-            id: user.id,
-            full_name: profileName,
-            username: null,
-          },
-        }));
-
-        setCommentText((current) => ({
-          ...current,
-          [postId]: "",
-        }));
-
-        setOpenComments((current) => ({
-          ...current,
-          [postId]: true,
-        }));
-      }
-    } finally {
-      setSubmittingComment((current) => ({
-        ...current,
-        [postId]: false,
-      }));
-    }
+    setSubmittingComment(null);
   }
 
-  // -------------------------
-  // DELETE COMMENT
-  // -------------------------
-  async function deleteComment(commentId: string, postId: string) {
-    if (!user) return;
-
-    const confirmed = window.confirm("Delete this comment?");
-
-    if (!confirmed) return;
-
-    const { error } = await supabase
-      .from("comments")
-      .delete()
-      .eq("id", commentId)
-      .eq("user_id", user.id);
-
-    if (error) {
-      console.error("Delete comment error:", error);
-      alert(error.message);
-      return;
-    }
-
-    setComments((current) =>
-      current.filter((comment) => comment.id !== commentId)
-    );
-
-    setCommentCounts((current) => ({
-      ...current,
-      [postId]: Math.max(0, (current[postId] || 0) - 1),
-    }));
-  }
-
-  function getCommenterName(userId: string) {
-    const profile = commentProfiles[userId];
-
-    if (!profile) {
-      if (userId === user?.id) return profileName;
-      return "Nikelink User";
-    }
-
-    return profile.full_name || profile.username || "Nikelink User";
-  }
-
-  function getInitial(name: string) {
-    return name.charAt(0).toUpperCase();
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    router.replace("/login");
   }
 
   function formatDate(date: string) {
@@ -468,87 +210,131 @@ export default function FeedPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#050816] text-white flex items-center justify-center">
+      <main className="flex min-h-screen items-center justify-center bg-[#050816] text-white">
         <div className="text-center">
-          <div className="w-12 h-12 rounded-full border-4 border-white/10 border-t-cyan-400 animate-spin mx-auto mb-4" />
-          <p className="text-white/60">Loading your feed...</p>
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 text-xl font-black shadow-lg shadow-blue-500/20">
+            N
+          </div>
+
+          <p className="text-sm text-white/40">
+            Loading Nikelink...
+          </p>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[#050816] text-white pb-24">
-      {/* TOP NAV */}
+    <main className="min-h-screen bg-[#050816] text-white">
+      {/* TOP BAR */}
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#050816]/90 backdrop-blur-xl">
-        <div className="max-w-2xl mx-auto px-4 h-16 flex items-center justify-between">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <button
             onClick={() => router.push("/dashboard")}
-            className="text-xl font-black tracking-tight"
+            className="flex items-center gap-3"
           >
-            Nikelink
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 font-black shadow-lg shadow-blue-500/20">
+              N
+            </div>
+
+            <span className="hidden text-lg font-black sm:block">
+              Nikelink
+            </span>
           </button>
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => router.push("/discover")}
-              className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10"
+              onClick={() => router.push("/profile")}
+              className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/70 transition hover:bg-white/10 hover:text-white"
             >
-              🔍
+              {userName}
             </button>
 
             <button
-              onClick={() => router.push("/notifications")}
-              className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10"
+              onClick={handleSignOut}
+              className="hidden rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-white/50 transition hover:bg-white/10 hover:text-white sm:block"
             >
-              🔔
+              Sign out
             </button>
           </div>
         </div>
       </header>
 
-      <div className="max-w-2xl mx-auto px-4 pt-5">
+      {/* CONTENT */}
+      <div className="mx-auto max-w-2xl px-4 pb-28 pt-6">
+        {/* WELCOME */}
+        <div className="mb-6">
+          <p className="text-sm font-semibold text-blue-400">
+            Your global community
+          </p>
+
+          <h1 className="mt-1 text-3xl font-black tracking-tight">
+            What's happening?
+          </h1>
+
+          <p className="mt-2 text-sm text-white/40">
+            Share something with the Nikelink community.
+          </p>
+        </div>
+
         {/* CREATE POST */}
-        <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 shadow-2xl shadow-black/20">
+        <form
+          onSubmit={handleCreatePost}
+          className="mb-7 rounded-3xl border border-white/10 bg-white/[0.035] p-4 shadow-2xl"
+        >
           <div className="flex gap-3">
-            <div className="w-11 h-11 rounded-full bg-gradient-to-br from-cyan-400 via-blue-500 to-fuchsia-500 flex items-center justify-center font-bold shrink-0">
-              {getInitial(profileName)}
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 font-black">
+              {userName.charAt(0).toUpperCase()}
             </div>
 
-            <div className="flex-1">
-              <textarea
-                value={newPost}
-                onChange={(e) => setNewPost(e.target.value)}
-                placeholder="What's on your mind?"
-                rows={3}
-                className="w-full resize-none bg-transparent outline-none text-white placeholder:text-white/40"
-              />
-
-              <div className="flex items-center justify-between mt-3">
-                <div className="text-xs text-white/40">
-                  Share something with your community
-                </div>
-
-                <button
-                  onClick={createPost}
-                  disabled={posting || !newPost.trim()}
-                  className="px-5 py-2.5 rounded-full bg-gradient-to-r from-cyan-500 via-blue-500 to-fuchsia-500 font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {posting ? "Posting..." : "Post"}
-                </button>
-              </div>
-            </div>
+            <textarea
+              value={newPost}
+              onChange={(e) => setNewPost(e.target.value)}
+              placeholder={`What's on your mind, ${
+                userName.split(" ")[0]
+              }?`}
+              rows={3}
+              maxLength={1000}
+              className="min-h-[90px] flex-1 resize-none bg-transparent pt-2 text-sm text-white outline-none placeholder:text-white/25"
+            />
           </div>
-        </section>
+
+          <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3">
+            <span className="text-xs text-white/25">
+              {newPost.length}/1000
+            </span>
+
+            <button
+              type="submit"
+              disabled={posting || !newPost.trim()}
+              className="rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-5 py-2.5 text-sm font-bold transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {posting ? "Posting..." : "Post"}
+            </button>
+          </div>
+
+          {message && (
+            <p className="mt-3 text-center text-xs text-blue-300">
+              {message}
+            </p>
+          )}
+        </form>
 
         {/* FEED */}
-        <section className="mt-5 space-y-4">
+        <div className="space-y-4">
           {posts.length === 0 ? (
-            <div className="text-center py-20">
-              <div className="text-5xl mb-4">🌍</div>
-              <h2 className="text-xl font-bold">Your feed is empty</h2>
-              <p className="text-white/50 mt-2">
-                Be the first person to share something.
+            <div className="rounded-3xl border border-white/10 bg-white/[0.035] px-6 py-12 text-center">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500/10 text-2xl">
+                🌍
+              </div>
+
+              <h2 className="text-lg font-bold">
+                Your feed is empty
+              </h2>
+
+              <p className="mx-auto mt-2 max-w-sm text-sm text-white/40">
+                Be the first person to share something with
+                the Nikelink community.
               </p>
             </div>
           ) : (
@@ -560,4 +346,199 @@ export default function FeedPage() {
               return (
                 <article
                   key={post.id}
-                  className="rounded-3xl border border-white/10 bg-white/[0]
+                  className="rounded-3xl border border-white/10 bg-white/[0.035] p-5 shadow-xl"
+                >
+                  {/* POST HEADER */}
+                  <div className="mb-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-blue-500/80 to-violet-600/80 font-black">
+                        N
+                      </div>
+
+                      <div>
+                        <p className="text-sm font-bold">
+                          Nikelink User
+                        </p>
+
+                        <p className="text-xs text-white/30">
+                          {formatDate(post.created_at)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button className="text-xl text-white/30">
+                      •••
+                    </button>
+                  </div>
+
+                  {/* POST CONTENT */}
+                  <p className="whitespace-pre-wrap text-[15px] leading-7 text-white/80">
+                    {post.content}
+                  </p>
+
+                  {/* POST ACTIONS */}
+                  <div className="mt-5 flex items-center gap-2 border-t border-white/10 pt-4">
+                    <button className="rounded-xl px-3 py-2 text-sm text-white/45 transition hover:bg-white/5 hover:text-pink-400">
+                      ♡ Like
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        setOpenComments((current) => ({
+                          ...current,
+                          [post.id]: !current[post.id],
+                        }))
+                      }
+                      className="rounded-xl px-3 py-2 text-sm text-white/45 transition hover:bg-white/5 hover:text-blue-400"
+                    >
+                      💬 Comment
+                      {postComments.length > 0 &&
+                        ` ${postComments.length}`}
+                    </button>
+
+                    <button className="rounded-xl px-3 py-2 text-sm text-white/45 transition hover:bg-white/5 hover:text-violet-400">
+                      ↗ Share
+                    </button>
+                  </div>
+
+                  {/* COMMENTS */}
+                  {openComments[post.id] && (
+                    <div className="mt-4 border-t border-white/10 pt-4">
+                      {postComments.length > 0 && (
+                        <div className="mb-4 space-y-3">
+                          {postComments.map((comment) => (
+                            <div
+                              key={comment.id}
+                              className="rounded-2xl bg-black/20 p-3"
+                            >
+                              <p className="text-xs font-bold text-white">
+                                Nikelink User
+                              </p>
+
+                              <p className="mt-1 text-sm leading-6 text-white/70">
+                                {comment.content}
+                              </p>
+
+                              <p className="mt-1 text-[10px] text-white/25">
+                                {formatDate(comment.created_at)}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {postComments.length === 0 && (
+                        <p className="mb-3 text-center text-xs text-white/30">
+                          No comments yet. Be the first to comment.
+                        </p>
+                      )}
+
+                      {/* COMMENT INPUT */}
+                      <div className="flex gap-2">
+                        <input
+                          value={commentText[post.id] || ""}
+                          onChange={(e) =>
+                            setCommentText((current) => ({
+                              ...current,
+                              [post.id]: e.target.value,
+                            }))
+                          }
+                          onKeyDown={(e) => {
+                            if (
+                              e.key === "Enter" &&
+                              !e.shiftKey
+                            ) {
+                              e.preventDefault();
+
+                              if (
+                                (commentText[post.id] || "").trim()
+                              ) {
+                                submitComment(post.id);
+                              }
+                            }
+                          }}
+                          placeholder="Write a comment..."
+                          maxLength={500}
+                          className="min-w-0 flex-1 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-blue-500/50"
+                        />
+
+                        <button
+                          onClick={() => submitComment(post.id)}
+                          disabled={
+                            submittingComment === post.id ||
+                            !(commentText[post.id] || "").trim()
+                          }
+                          className="rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          {submittingComment === post.id
+                            ? "..."
+                            : "Send"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </article>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* MOBILE BOTTOM NAV */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#050816]/95 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-2xl items-center justify-around px-2">
+          <button
+            onClick={() => router.push("/feed")}
+            className="flex flex-col items-center gap-1 px-4 text-blue-400"
+          >
+            <span className="text-xl">⌂</span>
+            <span className="text-[10px] font-semibold">
+              Home
+            </span>
+          </button>
+
+          <button
+            onClick={() => router.push("/discover")}
+            className="flex flex-col items-center gap-1 px-4 text-white/40"
+          >
+            <span className="text-xl">⌕</span>
+            <span className="text-[10px] font-semibold">
+              Discover
+            </span>
+          </button>
+
+          <button
+            onClick={() => {
+              document
+                .querySelector("textarea")
+                ?.focus();
+            }}
+            className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 text-2xl font-light shadow-lg shadow-blue-500/20"
+          >
+            +
+          </button>
+
+          <button
+            onClick={() => router.push("/notifications")}
+            className="flex flex-col items-center gap-1 px-4 text-white/40"
+          >
+            <span className="text-xl">♡</span>
+            <span className="text-[10px] font-semibold">
+              Alerts
+            </span>
+          </button>
+
+          <button
+            onClick={() => router.push("/profile")}
+            className="flex flex-col items-center gap-1 px-4 text-white/40"
+          >
+            <span className="text-xl">◯</span>
+            <span className="text-[10px] font-semibold">
+              Profile
+            </span>
+          </button>
+        </div>
+      </nav>
+    </main>
+  );
+                }
