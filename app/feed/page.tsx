@@ -11,12 +11,19 @@ type Post = {
   created_at: string;
 };
 
+type LikeCount = {
+  post_id: string;
+  count: number;
+};
+
 export default function FeedPage() {
   const router = useRouter();
 
   const [userId, setUserId] = useState("");
   const [userName, setUserName] = useState("Nikelink User");
   const [posts, setPosts] = useState<Post[]>([]);
+  const [likes, setLikes] = useState<Record<string, number>>({});
+  const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
   const [newPost, setNewPost] = useState("");
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
@@ -49,20 +56,43 @@ export default function FeedPage() {
         );
       }
 
-      await loadPosts();
+      const { data: postData, error: postError } =
+        await supabase
+          .from("posts")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+      if (!postError && postData) {
+        setPosts(postData);
+
+        const postIds = postData.map((post) => post.id);
+
+        if (postIds.length > 0) {
+          const { data: likeData } = await supabase
+            .from("likes")
+            .select("post_id, user_id")
+            .in("post_id", postIds);
+
+          if (likeData) {
+            const countMap: Record<string, number> = {};
+            const likedMap: Record<string, boolean> = {};
+
+            likeData.forEach((like) => {
+              countMap[like.post_id] =
+                (countMap[like.post_id] || 0) + 1;
+
+              if (like.user_id === currentUserId) {
+                likedMap[like.post_id] = true;
+              }
+            });
+
+            setLikes(countMap);
+            setLikedPosts(likedMap);
+          }
+        }
+      }
 
       setLoading(false);
-    }
-
-    async function loadPosts() {
-      const { data, error } = await supabase
-        .from("posts")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (!error && data) {
-        setPosts(data);
-      }
     }
 
     loadFeed();
@@ -108,6 +138,55 @@ export default function FeedPage() {
     }, 2000);
   }
 
+  async function handleLike(postId: string) {
+    const alreadyLiked = likedPosts[postId];
+
+    if (alreadyLiked) {
+      const { error } = await supabase
+        .from("likes")
+        .delete()
+        .eq("post_id", postId)
+        .eq("user_id", userId);
+
+      if (error) {
+        setMessage(error.message);
+        return;
+      }
+
+      setLikedPosts((current) => ({
+        ...current,
+        [postId]: false,
+      }));
+
+      setLikes((current) => ({
+        ...current,
+        [postId]: Math.max((current[postId] || 1) - 1, 0),
+      }));
+
+      return;
+    }
+
+    const { error } = await supabase.from("likes").insert({
+      post_id: postId,
+      user_id: userId,
+    });
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setLikedPosts((current) => ({
+      ...current,
+      [postId]: true,
+    }));
+
+    setLikes((current) => ({
+      ...current,
+      [postId]: (current[postId] || 0) + 1,
+    }));
+  }
+
   async function handleSignOut() {
     await supabase.auth.signOut();
     router.replace("/login");
@@ -117,24 +196,17 @@ export default function FeedPage() {
     const created = new Date(date);
     const now = new Date();
 
-    const difference =
-      Math.floor((now.getTime() - created.getTime()) / 1000);
+    const difference = Math.floor(
+      (now.getTime() - created.getTime()) / 1000
+    );
 
-    if (difference < 60) {
-      return "Just now";
-    }
-
-    if (difference < 3600) {
+    if (difference < 60) return "Just now";
+    if (difference < 3600)
       return `${Math.floor(difference / 60)}m`;
-    }
-
-    if (difference < 86400) {
+    if (difference < 86400)
       return `${Math.floor(difference / 3600)}h`;
-    }
-
-    if (difference < 604800) {
+    if (difference < 604800)
       return `${Math.floor(difference / 86400)}d`;
-    }
 
     return created.toLocaleDateString();
   }
@@ -267,111 +339,61 @@ export default function FeedPage() {
               </p>
             </div>
           ) : (
-            posts.map((post) => (
-              <article
-                key={post.id}
-                className="rounded-3xl border border-white/10 bg-white/[0.035] p-5 shadow-xl"
-              >
-                <div className="mb-4 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-blue-500/80 to-violet-600/80 font-black">
-                      N
+            posts.map((post) => {
+              const count = likes[post.id] || 0;
+              const isLiked = likedPosts[post.id];
+
+              return (
+                <article
+                  key={post.id}
+                  className="rounded-3xl border border-white/10 bg-white/[0.035] p-5 shadow-xl"
+                >
+                  <div className="mb-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-blue-500/80 to-violet-600/80 font-black">
+                        N
+                      </div>
+
+                      <div>
+                        <p className="text-sm font-bold">
+                          Nikelink User
+                        </p>
+
+                        <p className="text-xs text-white/30">
+                          {formatDate(post.created_at)}
+                        </p>
+                      </div>
                     </div>
 
-                    <div>
-                      <p className="text-sm font-bold">
-                        Nikelink User
-                      </p>
-
-                      <p className="text-xs text-white/30">
-                        {formatDate(post.created_at)}
-                      </p>
-                    </div>
+                    <button className="text-xl text-white/30">
+                      •••
+                    </button>
                   </div>
 
-                  <button className="text-xl text-white/30">
-                    •••
-                  </button>
-                </div>
+                  <p className="whitespace-pre-wrap text-[15px] leading-7 text-white/80">
+                    {post.content}
+                  </p>
 
-                <p className="whitespace-pre-wrap text-[15px] leading-7 text-white/80">
-                  {post.content}
-                </p>
+                  {/* LIKE BUTTON */}
+                  <div className="mt-5 flex items-center gap-2 border-t border-white/10 pt-4">
+                    <button
+                      onClick={() => handleLike(post.id)}
+                      className={`rounded-xl px-3 py-2 text-sm transition ${
+                        isLiked
+                          ? "bg-pink-500/10 text-pink-400"
+                          : "text-white/45 hover:bg-white/5 hover:text-pink-400"
+                      }`}
+                    >
+                      {isLiked ? "♥" : "♡"} Like
+                      {count > 0 && (
+                        <span className="ml-1 font-bold">
+                          {count}
+                        </span>
+                      )}
+                    </button>
 
-                <div className="mt-5 flex items-center gap-2 border-t border-white/10 pt-4">
-                  <button className="rounded-xl px-3 py-2 text-sm text-white/45 transition hover:bg-white/5 hover:text-pink-400">
-                    ♡ Like
-                  </button>
+                    <button className="rounded-xl px-3 py-2 text-sm text-white/45 transition hover:bg-white/5 hover:text-blue-400">
+                      ♧ Comment
+                    </button>
 
-                  <button className="rounded-xl px-3 py-2 text-sm text-white/45 transition hover:bg-white/5 hover:text-blue-400">
-                    ♧ Comment
-                  </button>
-
-                  <button className="rounded-xl px-3 py-2 text-sm text-white/45 transition hover:bg-white/5 hover:text-violet-400">
-                    ↗ Share
-                  </button>
-                </div>
-              </article>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* MOBILE BOTTOM NAV */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#050816]/95 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-2xl items-center justify-around px-2">
-          <button
-            onClick={() => router.push("/feed")}
-            className="flex flex-col items-center gap-1 px-4 text-blue-400"
-          >
-            <span className="text-xl">⌂</span>
-            <span className="text-[10px] font-semibold">
-              Home
-            </span>
-          </button>
-
-          <button
-            onClick={() => router.push("/discover")}
-            className="flex flex-col items-center gap-1 px-4 text-white/40"
-          >
-            <span className="text-xl">⌕</span>
-            <span className="text-[10px] font-semibold">
-              Discover
-            </span>
-          </button>
-
-          <button
-            onClick={() => {
-              document
-                .querySelector("textarea")
-                ?.focus();
-            }}
-            className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 text-2xl font-light shadow-lg shadow-blue-500/20"
-          >
-            +
-          </button>
-
-          <button
-            onClick={() => router.push("/notifications")}
-            className="flex flex-col items-center gap-1 px-4 text-white/40"
-          >
-            <span className="text-xl">♡</span>
-            <span className="text-[10px] font-semibold">
-              Alerts
-            </span>
-          </button>
-
-          <button
-            onClick={() => router.push("/profile")}
-            className="flex flex-col items-center gap-1 px-4 text-white/40"
-          >
-            <span className="text-xl">◯</span>
-            <span className="text-[10px] font-semibold">
-              Profile
-            </span>
-          </button>
-        </div>
-      </nav>
-    </main>
-  );
-              }
+                    <button className="rounded-xl px-3 py-2 text-sm text-white
