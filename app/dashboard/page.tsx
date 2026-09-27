@@ -1,15 +1,35 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 
 const navItems = [
-  { name: "Home", icon: "⌂", route: "/dashboard" },
-  { name: "Discover", icon: "◎", route: "/discover" },
-  { name: "Communities", icon: "◈", route: "/communities" },
-  { name: "Messages", icon: "◌", route: "/messages" },
-  { name: "Notifications", icon: "♢", route: "/notifications" },
+  {
+    name: "Home",
+    icon: "⌂",
+    route: "/dashboard",
+  },
+  {
+    name: "Discover",
+    icon: "◎",
+    route: "/discover",
+  },
+  {
+    name: "Communities",
+    icon: "◈",
+    route: "/communities",
+  },
+  {
+    name: "Messages",
+    icon: "◌",
+    route: "/messages",
+  },
+  {
+    name: "Notifications",
+    icon: "♢",
+    route: "/notifications",
+  },
 ];
 
 type Profile = {
@@ -23,15 +43,24 @@ type Profile = {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const pathname = usePathname();
 
   const [email, setEmail] = useState("");
   const [profile, setProfile] = useState<Profile | null>(null);
+
   const [loading, setLoading] = useState(true);
+  const [navigating, setNavigating] = useState("");
 
   useEffect(() => {
+    let mounted = true;
+
     async function loadDashboard() {
-      const { data: userData, error: userError } =
-        await supabase.auth.getUser();
+      const {
+        data: userData,
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (!mounted) return;
 
       if (userError || !userData.user) {
         router.replace("/login");
@@ -42,14 +71,18 @@ export default function DashboardPage() {
 
       setEmail(user.email ?? "");
 
-      const { data: profileData, error: profileError } =
-        await supabase
-          .from("profiles")
-          .select(
-            "full_name, username, country, bio, interests, age_group"
-          )
-          .eq("id", user.id)
-          .maybeSingle();
+      const {
+        data: profileData,
+        error: profileError,
+      } = await supabase
+        .from("profiles")
+        .select(
+          "full_name, username, country, bio, interests, age_group"
+        )
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (!mounted) return;
 
       if (!profileError && profileData) {
         setProfile(profileData);
@@ -59,7 +92,22 @@ export default function DashboardPage() {
     }
 
     loadDashboard();
+
+    return () => {
+      mounted = false;
+    };
   }, [router]);
+
+  function navigateTo(route: string) {
+    if (navigating) return;
+
+    if (pathname === route) {
+      return;
+    }
+
+    setNavigating(route);
+    router.push(route);
+  }
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -70,7 +118,8 @@ export default function DashboardPage() {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#050816] text-white">
         <div className="text-center">
-          <div className="mx-auto mb-4 h-10 w-10 animate-pulse rounded-full bg-blue-600/30" />
+          <div className="mx-auto mb-4 h-11 w-11 animate-pulse rounded-2xl bg-gradient-to-br from-blue-500/40 to-violet-500/40" />
+
           <p className="text-sm text-white/50">
             Loading Nikelink...
           </p>
@@ -86,74 +135,105 @@ export default function DashboardPage() {
     displayName
       .split(/\s+/)
       .slice(0, 2)
-      .map((word) => word.charAt(0).toUpperCase())
+      .map((word) =>
+        word.charAt(0).toUpperCase()
+      )
       .join("") || "N";
 
   return (
-    <main className="min-h-screen bg-[#050816] text-white">
+    <main className="min-h-screen bg-[#050816] pb-24 text-white md:pb-0">
+
+      {/* BACKGROUND GLOW */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -left-40 -top-40 h-96 w-96 rounded-full bg-blue-600/10 blur-[130px]" />
+
+        <div className="absolute right-[-120px] top-1/3 h-[30rem] w-[30rem] rounded-full bg-violet-600/10 blur-[150px]" />
+
+        <div className="absolute bottom-[-180px] left-1/3 h-96 w-96 rounded-full bg-cyan-500/5 blur-[130px]" />
+      </div>
 
       {/* HEADER */}
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#050816]/90 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
+      <header className="sticky top-0 z-50 border-b border-white/[0.07] bg-[#050816]/90 backdrop-blur-2xl">
+        <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-5 sm:px-8">
 
+          {/* LOGO */}
           <button
-            onClick={() => router.push("/dashboard")}
+            onClick={() => navigateTo("/dashboard")}
             className="flex items-center gap-3"
           >
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 font-black shadow-lg shadow-blue-500/20">
               N
             </div>
 
-            <span className="text-xl font-black">
+            <span className="text-xl font-black tracking-tight">
               Nikelink
             </span>
           </button>
 
-          <div className="hidden text-sm text-white/40 sm:block">
+          {/* EMAIL */}
+          <div className="hidden max-w-[260px] truncate text-sm text-white/35 sm:block">
             {email}
           </div>
 
+          {/* SIGN OUT */}
           <button
             onClick={handleSignOut}
-            className="rounded-xl border border-white/10 px-4 py-2 text-sm font-semibold transition hover:bg-white/10"
+            className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-white/60 transition hover:border-white/20 hover:bg-white/5 hover:text-white"
           >
             Sign out
           </button>
-
         </div>
       </header>
 
-      <div className="mx-auto flex max-w-7xl">
+      <div className="relative mx-auto flex max-w-7xl">
 
-        {/* SIDEBAR */}
-        <aside className="hidden min-h-[calc(100vh-73px)] w-64 border-r border-white/10 py-8 pr-6 md:block">
+        {/* DESKTOP SIDEBAR */}
+        <aside className="hidden min-h-[calc(100vh-72px)] w-64 shrink-0 border-r border-white/[0.07] py-8 pr-6 md:block">
 
           <nav className="space-y-2">
 
-            {navItems.map((item) => (
-              <button
-                key={item.name}
-                onClick={() => router.push(item.route)}
-                className="flex w-full items-center gap-4 rounded-xl px-4 py-3 text-left text-sm font-semibold text-white/50 transition hover:bg-white/5 hover:text-white"
-              >
-                <span className="text-xl">
-                  {item.icon}
-                </span>
+            {navItems.map((item) => {
+              const active = pathname === item.route;
 
-                {item.name}
-              </button>
-            ))}
+              return (
+                <button
+                  key={item.name}
+                  onClick={() => navigateTo(item.route)}
+                  className={`flex w-full items-center gap-4 rounded-xl px-4 py-3.5 text-left text-sm font-semibold transition ${
+                    active
+                      ? "bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-lg shadow-blue-600/10"
+                      : "text-white/50 hover:bg-white/5 hover:text-white"
+                  }`}
+                >
+                  <span className="flex w-6 justify-center text-xl">
+                    {item.icon}
+                  </span>
+
+                  <span>
+                    {item.name}
+                  </span>
+
+                  {active && (
+                    <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white" />
+                  )}
+                </button>
+              );
+            })}
 
           </nav>
 
-          {/* LOWER NAVIGATION */}
-          <div className="mt-10 border-t border-white/10 pt-6">
+          {/* SECONDARY NAV */}
+          <div className="mt-10 border-t border-white/[0.07] pt-6">
 
             <button
-              onClick={() => router.push("/profile")}
-              className="flex w-full items-center gap-4 rounded-xl px-4 py-3 text-left text-sm font-semibold text-white/50 transition hover:bg-white/5 hover:text-white"
+              onClick={() => navigateTo("/profile")}
+              className={`flex w-full items-center gap-4 rounded-xl px-4 py-3.5 text-left text-sm font-semibold transition ${
+                pathname === "/profile"
+                  ? "bg-white/10 text-white"
+                  : "text-white/50 hover:bg-white/5 hover:text-white"
+              }`}
             >
-              <span className="text-xl">
+              <span className="flex w-6 justify-center text-xl">
                 ◉
               </span>
 
@@ -161,10 +241,14 @@ export default function DashboardPage() {
             </button>
 
             <button
-              onClick={() => router.push("/settings")}
-              className="mt-2 flex w-full items-center gap-4 rounded-xl px-4 py-3 text-left text-sm font-semibold text-white/50 transition hover:bg-white/5 hover:text-white"
+              onClick={() => navigateTo("/settings")}
+              className={`mt-2 flex w-full items-center gap-4 rounded-xl px-4 py-3.5 text-left text-sm font-semibold transition ${
+                pathname === "/settings"
+                  ? "bg-white/10 text-white"
+                  : "text-white/50 hover:bg-white/5 hover:text-white"
+              }`}
             >
-              <span className="text-xl">
+              <span className="flex w-6 justify-center text-xl">
                 ⚙
               </span>
 
@@ -175,34 +259,36 @@ export default function DashboardPage() {
         </aside>
 
         {/* MAIN CONTENT */}
-        <section className="flex-1 px-5 py-10 sm:px-8 lg:px-12">
+        <section className="min-w-0 flex-1 px-5 py-8 sm:px-8 sm:py-10 lg:px-12">
 
-          <div className="max-w-5xl">
+          <div className="mx-auto max-w-5xl">
 
             {/* PROFILE HERO */}
-            <div className="mb-8 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-blue-600/20 via-purple-600/10 to-transparent p-6 sm:p-8">
+            <section className="relative mb-8 overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br from-blue-600/20 via-purple-600/10 to-transparent p-6 shadow-2xl shadow-black/10 sm:p-8">
 
-              <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+              <div className="absolute right-[-100px] top-[-120px] h-72 w-72 rounded-full bg-blue-500/10 blur-[100px]" />
+
+              <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
 
                 <div className="flex items-center gap-5">
 
                   {/* AVATAR */}
-                  <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl bg-gradient-to-br from-blue-500 to-violet-600 text-3xl font-black shadow-lg shadow-blue-500/20">
+                  <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[1.6rem] bg-gradient-to-br from-blue-500 via-violet-600 to-fuchsia-600 text-3xl font-black shadow-xl shadow-blue-500/20">
                     {initials}
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
 
-                    <p className="text-sm font-semibold text-blue-400">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-400">
                       Welcome back
                     </p>
 
-                    <h1 className="mt-1 text-3xl font-black sm:text-4xl">
+                    <h1 className="mt-2 truncate text-3xl font-black tracking-tight sm:text-4xl">
                       {displayName}
                     </h1>
 
                     {profile?.username && (
-                      <p className="mt-1 text-sm text-white/40">
+                      <p className="mt-1 truncate text-sm text-white/40">
                         @{profile.username}
                       </p>
                     )}
@@ -214,12 +300,11 @@ export default function DashboardPage() {
                     )}
 
                   </div>
-
                 </div>
 
                 <button
-                  onClick={() => router.push("/profile")}
-                  className="rounded-xl border border-white/10 px-5 py-3 text-sm font-semibold transition hover:bg-white/10"
+                  onClick={() => navigateTo("/profile")}
+                  className="rounded-xl border border-white/10 px-5 py-3 text-sm font-semibold text-white/65 transition hover:border-white/20 hover:bg-white/10 hover:text-white"
                 >
                   Edit profile
                 </button>
@@ -227,19 +312,19 @@ export default function DashboardPage() {
               </div>
 
               {profile?.bio && (
-                <p className="mt-6 max-w-2xl leading-7 text-white/55">
+                <p className="relative mt-6 max-w-2xl text-sm leading-7 text-white/55">
                   {profile.bio}
                 </p>
               )}
 
               {profile?.interests &&
                 profile.interests.length > 0 && (
-                  <div className="mt-5 flex flex-wrap gap-2">
+                  <div className="relative mt-5 flex flex-wrap gap-2">
 
                     {profile.interests.map((interest) => (
                       <span
                         key={interest}
-                        className="rounded-full border border-blue-400/20 bg-blue-500/10 px-3 py-1.5 text-xs font-medium text-blue-300"
+                        className="rounded-full border border-blue-400/20 bg-blue-500/10 px-3 py-1.5 text-xs font-semibold text-blue-300"
                       >
                         {interest}
                       </span>
@@ -248,21 +333,25 @@ export default function DashboardPage() {
                   </div>
                 )}
 
-            </div>
+            </section>
 
             {/* WELCOME */}
-            <p className="text-sm font-semibold text-blue-400">
-              Nikelink
-            </p>
+            <div>
 
-            <h2 className="mt-3 text-4xl font-black tracking-tight sm:text-5xl">
-              Your social world starts here.
-            </h2>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-400">
+                Nikelink
+              </p>
 
-            <p className="mt-4 max-w-2xl text-lg leading-8 text-white/45">
-              Discover people, share ideas and find communities that matter
-              to you.
-            </p>
+              <h2 className="mt-3 text-4xl font-black tracking-tight sm:text-5xl">
+                Your social world starts here.
+              </h2>
+
+              <p className="mt-4 max-w-2xl text-base leading-8 text-white/45 sm:text-lg">
+                Discover people, share ideas and find communities that matter
+                to you.
+              </p>
+
+            </div>
 
             {/* QUICK ACTIONS */}
             <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -271,54 +360,54 @@ export default function DashboardPage() {
                 icon="◎"
                 title="Discover people"
                 description="Meet people with shared interests and goals."
-                onClick={() => router.push("/discover")}
+                onClick={() => navigateTo("/discover")}
               />
 
               <DashboardCard
                 icon="◈"
                 title="Explore communities"
                 description="Find communities built around what you care about."
-                onClick={() => router.push("/communities")}
+                onClick={() => navigateTo("/communities")}
               />
 
               <DashboardCard
                 icon="↗"
                 title="Share something"
                 description="Share your ideas, experiences and creativity."
-                onClick={() => router.push("/feed")}
+                onClick={() => navigateTo("/feed")}
               />
 
             </div>
 
-            {/* MAIN FEATURE LINKS */}
+            {/* MAIN FEATURES */}
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
 
               <FeatureCard
                 icon="◎"
                 title="Discover"
                 description="Find people around the world and connect with people who share your interests."
-                onClick={() => router.push("/discover")}
+                onClick={() => navigateTo("/discover")}
               />
 
               <FeatureCard
                 icon="◈"
                 title="Communities"
                 description="Explore communities and connect around shared interests."
-                onClick={() => router.push("/communities")}
+                onClick={() => navigateTo("/communities")}
               />
 
               <FeatureCard
                 icon="◌"
                 title="Messages"
                 description="Continue your conversations and manage your connections."
-                onClick={() => router.push("/messages")}
+                onClick={() => navigateTo("/messages")}
               />
 
               <FeatureCard
                 icon="♢"
                 title="Notifications"
                 description="See connection requests and other Nikelink activity."
-                onClick={() => router.push("/notifications")}
+                onClick={() => navigateTo("/notifications")}
               />
 
             </div>
@@ -326,44 +415,24 @@ export default function DashboardPage() {
             {/* PROFILE + SETTINGS */}
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
 
-              <button
-                onClick={() => router.push("/profile")}
-                className="group rounded-3xl border border-white/10 bg-white/[0.035] p-6 text-left transition duration-300 hover:-translate-y-1 hover:border-blue-400/30 hover:bg-white/[0.06]"
-              >
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 text-xl text-blue-300">
-                  ◉
-                </div>
+              <FeatureCard
+                icon="◉"
+                title="Your profile"
+                description="View and update your Nikelink profile."
+                onClick={() => navigateTo("/profile")}
+              />
 
-                <h3 className="mt-5 text-lg font-bold">
-                  Your profile
-                </h3>
-
-                <p className="mt-2 text-sm leading-6 text-white/40">
-                  View and update your Nikelink profile.
-                </p>
-              </button>
-
-              <button
-                onClick={() => router.push("/settings")}
-                className="group rounded-3xl border border-white/10 bg-white/[0.035] p-6 text-left transition duration-300 hover:-translate-y-1 hover:border-violet-400/30 hover:bg-white/[0.06]"
-              >
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-500/10 text-xl text-violet-300">
-                  ⚙
-                </div>
-
-                <h3 className="mt-5 text-lg font-bold">
-                  Settings
-                </h3>
-
-                <p className="mt-2 text-sm leading-6 text-white/40">
-                  Manage your account, security and Nikelink preferences.
-                </p>
-              </button>
+              <FeatureCard
+                icon="⚙"
+                title="Settings"
+                description="Manage your account and Nikelink preferences."
+                onClick={() => navigateTo("/settings")}
+              />
 
             </div>
 
             {/* ACTIVITY */}
-            <div className="mt-8 rounded-3xl border border-white/10 bg-white/[0.035] p-6">
+            <section className="mt-8 rounded-[2rem] border border-white/10 bg-white/[0.035] p-6 shadow-xl shadow-black/10 sm:p-7">
 
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/30">
                 Your space
@@ -373,59 +442,72 @@ export default function DashboardPage() {
                 Your Nikelink activity
               </h2>
 
-              <p className="mt-2 text-sm leading-6 text-white/40">
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-white/40">
                 Your posts, connections, communities and conversations will
                 appear here as you use Nikelink.
               </p>
 
-            </div>
+            </section>
 
           </div>
         </section>
       </div>
 
       {/* MOBILE NAVIGATION */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#050816]/95 backdrop-blur-xl md:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-[100] border-t border-white/[0.08] bg-[#050816]/95 shadow-2xl shadow-black/30 backdrop-blur-2xl md:hidden">
 
-        <div className="grid h-20 grid-cols-5">
+        <div className="mx-auto grid h-[76px] max-w-xl grid-cols-5">
 
-          <MobileNavButton
-            icon="⌂"
-            label="Home"
-            onClick={() => router.push("/dashboard")}
-          />
+          {navItems.map((item) => {
+            const active = pathname === item.route;
 
-          <MobileNavButton
-            icon="◎"
-            label="Discover"
-            onClick={() => router.push("/discover")}
-          />
+            return (
+              <button
+                key={item.name}
+                onClick={() => navigateTo(item.route)}
+                className={`relative flex flex-col items-center justify-center gap-1 transition ${
+                  active
+                    ? "text-blue-400"
+                    : "text-white/45 hover:text-white"
+                }`}
+              >
 
-          <MobileNavButton
-            icon="◈"
-            label="Community"
-            onClick={() => router.push("/communities")}
-          />
+                {/* ACTIVE INDICATOR */}
+                {active && (
+                  <span className="absolute top-0 h-0.5 w-10 rounded-full bg-gradient-to-r from-blue-400 to-violet-500" />
+                )}
 
-          <MobileNavButton
-            icon="◌"
-            label="Messages"
-            onClick={() => router.push("/messages")}
-          />
+                <span
+                  className={`text-xl ${
+                    active ? "scale-110" : ""
+                  } transition-transform`}
+                >
+                  {item.icon}
+                </span>
 
-          <MobileNavButton
-            icon="●"
-            label="Profile"
-            onClick={() => router.push("/profile")}
-          />
+                <span className="text-[10px] font-semibold">
+                  {item.name === "Communities"
+                    ? "Community"
+                    : item.name}
+                </span>
+
+              </button>
+            );
+          })}
 
         </div>
-
       </nav>
+
+      {/* NAVIGATION LOADING */}
+      {navigating && (
+        <div className="pointer-events-none fixed inset-x-0 top-0 z-[200] h-0.5 bg-gradient-to-r from-blue-500 via-violet-500 to-fuchsia-500" />
+      )}
 
     </main>
   );
 }
+
+/* DASHBOARD CARD */
 
 function DashboardCard({
   icon,
@@ -441,9 +523,9 @@ function DashboardCard({
   return (
     <button
       onClick={onClick}
-      className="group rounded-3xl border border-white/10 bg-white/[0.035] p-6 text-left transition duration-300 hover:-translate-y-1 hover:border-blue-400/30 hover:bg-white/[0.06]"
+      className="group rounded-[1.7rem] border border-white/10 bg-white/[0.035] p-6 text-left transition duration-300 hover:-translate-y-1 hover:border-blue-400/30 hover:bg-white/[0.06] active:scale-[0.99]"
     >
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 text-xl text-blue-300">
+      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 text-xl text-blue-300 transition group-hover:bg-blue-500/20">
         {icon}
       </div>
 
@@ -462,6 +544,8 @@ function DashboardCard({
   );
 }
 
+/* FEATURE CARD */
+
 function FeatureCard({
   icon,
   title,
@@ -476,14 +560,16 @@ function FeatureCard({
   return (
     <button
       onClick={onClick}
-      className="group flex items-start gap-4 rounded-3xl border border-white/10 bg-white/[0.035] p-5 text-left transition duration-300 hover:-translate-y-1 hover:border-blue-400/30 hover:bg-white/[0.06]"
+      className="group flex items-start gap-4 rounded-[1.7rem] border border-white/10 bg-white/[0.035] p-5 text-left transition duration-300 hover:-translate-y-1 hover:border-blue-400/30 hover:bg-white/[0.06] active:scale-[0.99]"
     >
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/5 text-xl text-blue-300">
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/5 text-xl text-blue-300 transition group-hover:bg-blue-500/10">
         {icon}
       </div>
 
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
+
         <div className="flex items-center justify-between gap-3">
+
           <h3 className="font-bold">
             {title}
           </h3>
@@ -491,37 +577,14 @@ function FeatureCard({
           <span className="text-white/25 transition group-hover:text-blue-400">
             →
           </span>
+
         </div>
 
         <p className="mt-2 text-sm leading-6 text-white/40">
           {description}
         </p>
+
       </div>
     </button>
   );
-}
-
-function MobileNavButton({
-  icon,
-  label,
-  onClick,
-}: {
-  icon: string;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="flex flex-col items-center justify-center gap-1 text-white/50 transition hover:bg-white/5 hover:text-white"
-    >
-      <span className="text-xl">
-        {icon}
-      </span>
-
-      <span className="text-[10px] font-semibold">
-        {label}
-      </span>
-    </button>
-  );
-}
+              }
