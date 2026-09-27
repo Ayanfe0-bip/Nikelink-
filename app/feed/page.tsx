@@ -26,6 +26,8 @@ export default function FeedPage() {
   const [userName, setUserName] = useState("Nikelink User");
   const [posts, setPosts] = useState<Post[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
+  const [likedPosts, setLikedPosts] = useState<string[]>([]);
+  const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
   const [commentText, setCommentText] = useState<Record<string, string>>({});
   const [openComments, setOpenComments] = useState<Record<string, boolean>>({});
   const [submittingComment, setSubmittingComment] = useState<string | null>(
@@ -63,6 +65,7 @@ export default function FeedPage() {
 
       await loadPosts();
       await loadComments();
+      await loadLikes(currentUserId);
 
       setLoading(false);
     }
@@ -73,8 +76,10 @@ export default function FeedPage() {
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (!error && data) {
-        setPosts(data);
+      if (error) {
+        console.error("Posts error:", error);
+      } else {
+        setPosts(data || []);
       }
     }
 
@@ -89,6 +94,31 @@ export default function FeedPage() {
       } else {
         setComments(data || []);
       }
+    }
+
+    async function loadLikes(currentUserId: string) {
+      const { data, error } = await supabase
+        .from("likes")
+        .select("id, post_id, user_id");
+
+      if (error) {
+        console.error("Likes error:", error);
+        return;
+      }
+
+      const counts: Record<string, number> = {};
+      const mine: string[] = [];
+
+      (data || []).forEach((like) => {
+        counts[like.post_id] = (counts[like.post_id] || 0) + 1;
+
+        if (like.user_id === currentUserId) {
+          mine.push(like.post_id);
+        }
+      });
+
+      setLikeCounts(counts);
+      setLikedPosts(mine);
     }
 
     loadFeed();
@@ -132,6 +162,57 @@ export default function FeedPage() {
     setTimeout(() => {
       setMessage("");
     }, 2000);
+  }
+
+  async function toggleLike(postId: string) {
+    if (!userId) return;
+
+    const alreadyLiked = likedPosts.includes(postId);
+
+    if (alreadyLiked) {
+      const { error } = await supabase
+        .from("likes")
+        .delete()
+        .eq("post_id", postId)
+        .eq("user_id", userId);
+
+      if (error) {
+        console.error("Unlike error:", error);
+        setMessage(error.message);
+        return;
+      }
+
+      setLikedPosts((current) =>
+        current.filter((id) => id !== postId)
+      );
+
+      setLikeCounts((current) => ({
+        ...current,
+        [postId]: Math.max((current[postId] || 1) - 1, 0),
+      }));
+
+      return;
+    }
+
+    const { error } = await supabase
+      .from("likes")
+      .insert({
+        post_id: postId,
+        user_id: userId,
+      });
+
+    if (error) {
+      console.error("Like error:", error);
+      setMessage(error.message);
+      return;
+    }
+
+    setLikedPosts((current) => [...current, postId]);
+
+    setLikeCounts((current) => ({
+      ...current,
+      [postId]: (current[postId] || 0) + 1,
+    }));
   }
 
   async function submitComment(postId: string) {
@@ -189,9 +270,7 @@ export default function FeedPage() {
       (now.getTime() - created.getTime()) / 1000
     );
 
-    if (difference < 60) {
-      return "Just now";
-    }
+    if (difference < 60) return "Just now";
 
     if (difference < 3600) {
       return `${Math.floor(difference / 60)}m`;
@@ -226,7 +305,6 @@ export default function FeedPage() {
 
   return (
     <main className="min-h-screen bg-[#050816] text-white">
-      {/* TOP BAR */}
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#050816]/90 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <button
@@ -260,9 +338,7 @@ export default function FeedPage() {
         </div>
       </header>
 
-      {/* CONTENT */}
       <div className="mx-auto max-w-2xl px-4 pb-28 pt-6">
-        {/* WELCOME */}
         <div className="mb-6">
           <p className="text-sm font-semibold text-blue-400">
             Your global community
@@ -277,7 +353,6 @@ export default function FeedPage() {
           </p>
         </div>
 
-        {/* CREATE POST */}
         <form
           onSubmit={handleCreatePost}
           className="mb-7 rounded-3xl border border-white/10 bg-white/[0.035] p-4 shadow-2xl"
@@ -320,7 +395,6 @@ export default function FeedPage() {
           )}
         </form>
 
-        {/* FEED */}
         <div className="space-y-4">
           {posts.length === 0 ? (
             <div className="rounded-3xl border border-white/10 bg-white/[0.035] px-6 py-12 text-center">
@@ -343,12 +417,14 @@ export default function FeedPage() {
                 (comment) => comment.post_id === post.id
               );
 
+              const isLiked = likedPosts.includes(post.id);
+              const likes = likeCounts[post.id] || 0;
+
               return (
                 <article
                   key={post.id}
                   className="rounded-3xl border border-white/10 bg-white/[0.035] p-5 shadow-xl"
                 >
-                  {/* POST HEADER */}
                   <div className="mb-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-blue-500/80 to-violet-600/80 font-black">
@@ -371,15 +447,21 @@ export default function FeedPage() {
                     </button>
                   </div>
 
-                  {/* POST CONTENT */}
                   <p className="whitespace-pre-wrap text-[15px] leading-7 text-white/80">
                     {post.content}
                   </p>
 
-                  {/* POST ACTIONS */}
                   <div className="mt-5 flex items-center gap-2 border-t border-white/10 pt-4">
-                    <button className="rounded-xl px-3 py-2 text-sm text-white/45 transition hover:bg-white/5 hover:text-pink-400">
-                      ♡ Like
+                    <button
+                      onClick={() => toggleLike(post.id)}
+                      className={`rounded-xl px-3 py-2 text-sm transition hover:bg-white/5 ${
+                        isLiked
+                          ? "text-pink-400"
+                          : "text-white/45 hover:text-pink-400"
+                      }`}
+                    >
+                      {isLiked ? "♥" : "♡"} Like
+                      {likes > 0 ? ` ${likes}` : ""}
                     </button>
 
                     <button
@@ -401,7 +483,6 @@ export default function FeedPage() {
                     </button>
                   </div>
 
-                  {/* COMMENTS */}
                   {openComments[post.id] && (
                     <div className="mt-4 border-t border-white/10 pt-4">
                       {postComments.length > 0 && (
@@ -433,7 +514,6 @@ export default function FeedPage() {
                         </p>
                       )}
 
-                      {/* COMMENT INPUT */}
                       <div className="flex gap-2">
                         <input
                           value={commentText[post.id] || ""}
@@ -484,7 +564,6 @@ export default function FeedPage() {
         </div>
       </div>
 
-      {/* MOBILE BOTTOM NAV */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#050816]/95 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-2xl items-center justify-around px-2">
           <button
@@ -541,4 +620,4 @@ export default function FeedPage() {
       </nav>
     </main>
   );
-                }
+      }
