@@ -791,43 +791,62 @@ export default function DiscoverPage() {
       </section>
 
       {/* MOBILE NAVIGATION */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#050816]/95 backdrop-blur-2xl">
-        <div className="mx-auto grid h-20 max-w-3xl grid-cols-4">
-          <button
-            onClick={() => router.push("/feed")}
-            className="flex flex-col items-center justify-center gap-1 text-white/45 transition hover:text-white"
-          >
-            <span className="text-xl">⌂</span>
-            <span className="text-[10px]">Home</span>
-          </button>
+<nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#050816]/95 backdrop-blur-2xl">
+  <div className="mx-auto grid h-20 max-w-3xl grid-cols-4">
 
-          <button
-            onClick={() => router.push("/discover")}
-            className="flex flex-col items-center justify-center gap-1 text-violet-400"
-          >
-            <span className="text-xl">◎</span>
-            <span className="text-[10px] font-bold">
-              Discover
-            </span>
-          </button>
+    {/* HOME */}
+    <button
+      onClick={() => router.push("/dashboard")}
+      className="flex flex-col items-center justify-center gap-1 text-white/45 transition hover:text-white"
+    >
+      <span className="text-xl">⌂</span>
+      <span className="text-[10px]">
+        Home
+      </span>
+    </button>
 
-          <button
-            onClick={() => router.push("/feed")}
-            className="flex flex-col items-center justify-center gap-1 text-white/45 transition hover:text-white"
-          >
-            <span className="text-xl">＋</span>
-            <span className="text-[10px]">Create</span>
-          </button>
+    {/* DISCOVER */}
+    <button
+      onClick={() => router.push("/discover")}
+      className="flex flex-col items-center justify-center gap-1 text-violet-400"
+    >
+      <span className="text-xl">
+        ◎
+      </span>
 
-          <button
-            onClick={() => router.push("/notifications")}
-            className="flex flex-col items-center justify-center gap-1 text-white/45 transition hover:text-white"
-          >
-            <span className="text-xl">♢</span>
-            <span className="text-[10px]">Alerts</span>
-          </button>
-        </div>
-      </nav>
-    </main>
-  );
-}
+      <span className="text-[10px] font-bold">
+        Discover
+      </span>
+    </button>
+
+    {/* COMMUNITY */}
+    <button
+      onClick={() => router.push("/communities")}
+      className="flex flex-col items-center justify-center gap-1 text-white/45 transition hover:text-white"
+    >
+      <span className="text-xl">
+        ◈
+      </span>
+
+      <span className="text-[10px]">
+        Community
+      </span>
+    </button>
+
+    {/* MESSAGES */}
+    <button
+      onClick={() => router.push("/messages")}
+      className="flex flex-col items-center justify-center gap-1 text-white/45 transition hover:text-white"
+    >
+      <span className="text-xl">
+        ◌
+      </span>
+
+      <span className="text-[10px]">
+        Messages
+      </span>
+    </button>
+
+  </div>
+</nav>
+
