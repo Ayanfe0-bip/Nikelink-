@@ -70,6 +70,7 @@ export default function FeedPage() {
     }
 
     const currentUserId = userData.user.id;
+
     setUserId(currentUserId);
 
     const { data: profile } = await supabase
@@ -86,9 +87,11 @@ export default function FeedPage() {
       );
     }
 
-    await loadPosts();
-    await loadComments();
-    await loadLikes();
+    await Promise.all([
+      loadPosts(),
+      loadComments(),
+      loadLikes(),
+    ]);
 
     setLoading(false);
   }
@@ -97,7 +100,9 @@ export default function FeedPage() {
     const { data, error } = await supabase
       .from("posts")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("created_at", {
+        ascending: false,
+      });
 
     if (!error && data) {
       setPosts(data);
@@ -110,7 +115,9 @@ export default function FeedPage() {
       .select(
         "id, post_id, user_id, content, created_at"
       )
-      .order("created_at", { ascending: true });
+      .order("created_at", {
+        ascending: true,
+      });
 
     if (!error && data) {
       setComments(data);
@@ -155,12 +162,15 @@ export default function FeedPage() {
     }
 
     if (data) {
-      setPosts((current) => [data, ...current]);
+      setPosts((current) => [
+        data,
+        ...current,
+      ]);
     }
 
     setNewPost("");
-    setMessage("Post published.");
     setPosting(false);
+    setMessage("Post published.");
 
     setTimeout(() => {
       setMessage("");
@@ -190,7 +200,8 @@ export default function FeedPage() {
 
       setLikes((current) =>
         current.filter(
-          (like) => like.id !== existingLike.id
+          (like) =>
+            like.id !== existingLike.id
         )
       );
 
@@ -203,7 +214,9 @@ export default function FeedPage() {
         post_id: postId,
         user_id: userId,
       })
-      .select("id, post_id, user_id")
+      .select(
+        "id, post_id, user_id"
+      )
       .single();
 
     if (error) {
@@ -212,7 +225,10 @@ export default function FeedPage() {
     }
 
     if (data) {
-      setLikes((current) => [...current, data]);
+      setLikes((current) => [
+        ...current,
+        data,
+      ]);
     }
   }
 
@@ -245,7 +261,10 @@ export default function FeedPage() {
     }
 
     if (data) {
-      setComments((current) => [...current, data]);
+      setComments((current) => [
+        ...current,
+        data,
+      ]);
     }
 
     setCommentText((current) => ({
@@ -276,7 +295,9 @@ export default function FeedPage() {
         return;
       }
 
-      await navigator.clipboard.writeText(shareUrl);
+      await navigator.clipboard.writeText(
+        shareUrl
+      );
 
       setMessage("Post link copied.");
 
@@ -284,11 +305,16 @@ export default function FeedPage() {
         setMessage("");
       }, 2000);
     } catch (error) {
-      console.log("Share cancelled:", error);
+      console.log(
+        "Share cancelled:",
+        error
+      );
     }
   }
 
-  async function handleDeletePost(postId: string) {
+  async function handleDeletePost(
+    postId: string
+  ) {
     const confirmed = window.confirm(
       "Are you sure you want to delete this post?"
     );
@@ -314,18 +340,22 @@ export default function FeedPage() {
     }
 
     setPosts((current) =>
-      current.filter((post) => post.id !== postId)
+      current.filter(
+        (post) => post.id !== postId
+      )
     );
 
     setComments((current) =>
       current.filter(
-        (comment) => comment.post_id !== postId
+        (comment) =>
+          comment.post_id !== postId
       )
     );
 
     setLikes((current) =>
       current.filter(
-        (like) => like.post_id !== postId
+        (like) =>
+          like.post_id !== postId
       )
     );
 
@@ -338,20 +368,20 @@ export default function FeedPage() {
     }, 2000);
   }
 
-  function handleReportPost(postId: string) {
+  function handleReportPost(
+    postId: string
+  ) {
     setOpenMenu(null);
     setMessage("Post reported.");
 
-    console.log("Reported post:", postId);
+    console.log(
+      "Reported post:",
+      postId
+    );
 
     setTimeout(() => {
       setMessage("");
     }, 2000);
-  }
-
-  async function handleSignOut() {
-    await supabase.auth.signOut();
-    router.replace("/login");
   }
 
   function formatDate(date: string) {
@@ -359,35 +389,51 @@ export default function FeedPage() {
     const now = new Date();
 
     const difference = Math.floor(
-      (now.getTime() - created.getTime()) / 1000
+      (now.getTime() -
+        created.getTime()) /
+        1000
     );
 
-    if (difference < 60) return "Just now";
+    if (difference < 60) {
+      return "Just now";
+    }
 
     if (difference < 3600) {
-      return `${Math.floor(difference / 60)}m`;
+      return `${Math.floor(
+        difference / 60
+      )}m`;
     }
 
     if (difference < 86400) {
-      return `${Math.floor(difference / 3600)}h`;
+      return `${Math.floor(
+        difference / 3600
+      )}h`;
     }
 
     if (difference < 604800) {
-      return `${Math.floor(difference / 86400)}d`;
+      return `${Math.floor(
+        difference / 86400
+      )}d`;
     }
 
     return created.toLocaleDateString();
   }
 
-  function getPostLikes(postId: string) {
+  function getPostLikes(
+    postId: string
+  ) {
     return likes.filter(
-      (like) => like.post_id === postId
+      (like) =>
+        like.post_id === postId
     );
   }
 
-  function getPostComments(postId: string) {
+  function getPostComments(
+    postId: string
+  ) {
     return comments.filter(
-      (comment) => comment.post_id === postId
+      (comment) =>
+        comment.post_id === postId
     );
   }
 
@@ -408,12 +454,14 @@ export default function FeedPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#050816] text-white pb-24">
+    <main className="min-h-screen bg-[#050816] pb-24 text-white">
       {/* TOP NAV */}
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#050816]/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
           <button
-            onClick={() => router.push("/feed")}
+            onClick={() =>
+              router.push("/feed")
+            }
             className="text-2xl font-black tracking-tight"
           >
             <span className="bg-gradient-to-r from-blue-400 via-violet-400 to-pink-400 bg-clip-text text-transparent">
@@ -424,9 +472,12 @@ export default function FeedPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() =>
-                router.push("/notifications")
+                router.push(
+                  "/notifications"
+                )
               }
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-lg"
+              aria-label="Notifications"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-lg transition hover:bg-white/10"
             >
               🔔
             </button>
@@ -435,9 +486,12 @@ export default function FeedPage() {
               onClick={() =>
                 router.push("/profile")
               }
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 font-bold"
+              aria-label="Profile"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 font-bold shadow-lg shadow-blue-500/20"
             >
-              {userName.charAt(0).toUpperCase()}
+              {userName
+                .charAt(0)
+                .toUpperCase()}
             </button>
           </div>
         </div>
@@ -453,6 +507,10 @@ export default function FeedPage() {
           <h1 className="mt-1 text-2xl font-bold">
             {userName}
           </h1>
+
+          <p className="mt-1 text-sm text-white/30">
+            Connect. Share. Belong.
+          </p>
         </div>
 
         {/* CREATE POST */}
@@ -461,8 +519,10 @@ export default function FeedPage() {
           className="mb-6 rounded-3xl border border-white/10 bg-white/[0.04] p-4 shadow-2xl shadow-black/20"
         >
           <div className="flex gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 font-bold">
-              {userName.charAt(0).toUpperCase()}
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 font-bold shadow-lg shadow-blue-500/20">
+              {userName
+                .charAt(0)
+                .toUpperCase()}
             </div>
 
             <textarea
@@ -472,21 +532,27 @@ export default function FeedPage() {
               }
               placeholder="What's happening?"
               rows={3}
+              maxLength={2000}
               className="min-h-[80px] flex-1 resize-none rounded-2xl border border-white/10 bg-black/20 p-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-blue-500/50"
             />
           </div>
 
-          <div className="mt-3 flex items-center justify-between">
+          <div className="mt-3 flex items-center justify-between gap-3">
             <span className="text-xs text-white/30">
               Share something with the community
             </span>
 
             <button
               type="submit"
-              disabled={posting || !newPost.trim()}
-              className="rounded-full bg-gradient-to-r from-blue-500 to-violet-600 px-5 py-2 text-sm font-bold shadow-lg shadow-blue-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+              disabled={
+                posting ||
+                !newPost.trim()
+              }
+              className="shrink-0 rounded-full bg-gradient-to-r from-blue-500 to-violet-600 px-5 py-2 text-sm font-bold shadow-lg shadow-blue-500/20 transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {posting ? "Posting..." : "Post"}
+              {posting
+                ? "Posting..."
+                : "Post"}
             </button>
           </div>
         </form>
@@ -511,7 +577,8 @@ export default function FeedPage() {
               </h2>
 
               <p className="mt-2 text-sm text-white/40">
-                Be the first to share something.
+                Be the first to share
+                something.
               </p>
             </div>
           ) : (
@@ -520,16 +587,20 @@ export default function FeedPage() {
                 getPostLikes(post.id);
 
               const postComments =
-                getPostComments(post.id);
+                getPostComments(
+                  post.id
+                );
 
               const userLiked =
                 postLikes.some(
                   (like) =>
-                    like.user_id === userId
+                    like.user_id ===
+                    userId
                 );
 
               const isOwnPost =
-                post.user_id === userId;
+                post.user_id ===
+                userId;
 
               return (
                 <article
@@ -561,27 +632,39 @@ export default function FeedPage() {
                       <button
                         onClick={() =>
                           setOpenMenu(
-                            openMenu === post.id
+                            openMenu ===
+                              post.id
                               ? null
                               : post.id
                           )
                         }
+                        aria-label="Post menu"
                         className="flex h-9 w-9 items-center justify-center rounded-full text-xl text-white/50 transition hover:bg-white/10 hover:text-white"
                       >
                         ⋯
                       </button>
 
-                      {openMenu === post.id && (
+                      {openMenu ===
+                        post.id && (
                         <div className="absolute right-0 top-11 z-30 w-48 overflow-hidden rounded-2xl border border-white/10 bg-[#101426] shadow-2xl shadow-black/50">
                           <button
                             onClick={() => {
-                              setOpenMenu(null);
-                              handleShare(post);
+                              setOpenMenu(
+                                null
+                              );
+                              handleShare(
+                                post
+                              );
                             }}
-                            className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm hover:bg-white/10"
+                            className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition hover:bg-white/10"
                           >
-                            <span>↗️</span>
-                            <span>Share post</span>
+                            <span>
+                              ↗️
+                            </span>
+
+                            <span>
+                              Share post
+                            </span>
                           </button>
 
                           {isOwnPost ? (
@@ -595,9 +678,11 @@ export default function FeedPage() {
                                 deletingPost ===
                                 post.id
                               }
-                              className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-red-400 hover:bg-red-500/10"
+                              className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-red-400 transition hover:bg-red-500/10"
                             >
-                              <span>🗑️</span>
+                              <span>
+                                🗑️
+                              </span>
 
                               <span>
                                 {deletingPost ===
@@ -613,10 +698,15 @@ export default function FeedPage() {
                                   post.id
                                 )
                               }
-                              className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm hover:bg-white/10"
+                              className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition hover:bg-white/10"
                             >
-                              <span>⚑</span>
-                              <span>Report post</span>
+                              <span>
+                                ⚑
+                              </span>
+
+                              <span>
+                                Report post
+                              </span>
                             </button>
                           )}
                         </div>
@@ -638,7 +728,9 @@ export default function FeedPage() {
                         {/* LIKE */}
                         <button
                           onClick={() =>
-                            toggleLike(post.id)
+                            toggleLike(
+                              post.id
+                            )
                           }
                           className={`flex items-center gap-2 rounded-full px-3 py-2 text-sm transition ${
                             userLiked
@@ -653,10 +745,11 @@ export default function FeedPage() {
                           </span>
 
                           <span>
-                            {postLikes.length}
+                            {
+                              postLikes.length
+                            }
                           </span>
                         </button>
-
                         {/* COMMENTS */}
                         <button
                           onClick={() =>
@@ -677,14 +770,18 @@ export default function FeedPage() {
                           </span>
 
                           <span>
-                            {postComments.length}
+                            {
+                              postComments.length
+                            }
                           </span>
                         </button>
 
                         {/* SHARE */}
                         <button
                           onClick={() =>
-                            handleShare(post)
+                            handleShare(
+                              post
+                            )
                           }
                           className="flex items-center gap-2 rounded-full px-3 py-2 text-sm text-white/50 transition hover:bg-white/5 hover:text-violet-400"
                         >
@@ -701,64 +798,90 @@ export default function FeedPage() {
                   </div>
 
                   {/* COMMENTS */}
-                  
-                            {/* COMMENTS */}
-                  {openComments[post.id] && (
+                  {openComments[
+                    post.id
+                  ] && (
                     <div className="border-t border-white/10 px-4 pb-4 pt-3">
                       <div className="space-y-3">
-                        {postComments.length === 0 ? (
+                        {postComments.length ===
+                        0 ? (
                           <p className="py-2 text-center text-xs text-white/30">
                             No comments yet.
                           </p>
                         ) : (
-                          postComments.map((comment) => (
-                            <div
-                              key={comment.id}
-                              className="flex gap-3"
-                            >
-                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 text-xs font-bold">
-                                N
+                          postComments.map(
+                            (comment) => (
+                              <div
+                                key={
+                                  comment.id
+                                }
+                                className="flex gap-3"
+                              >
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 text-xs font-bold">
+                                  N
+                                </div>
+
+                                <div className="min-w-0 flex-1 rounded-2xl bg-white/[0.05] px-3 py-2">
+                                  <p className="text-xs font-semibold text-white">
+                                    Nikelink
+                                    User
+                                  </p>
+
+                                  <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-white/75">
+                                    {
+                                      comment.content
+                                    }
+                                  </p>
+
+                                  <p className="mt-1 text-[10px] text-white/25">
+                                    {formatDate(
+                                      comment.created_at
+                                    )}
+                                  </p>
+                                </div>
                               </div>
-
-                              <div className="min-w-0 flex-1 rounded-2xl bg-white/[0.05] px-3 py-2">
-                                <p className="text-xs font-semibold text-white">
-                                  Nikelink User
-                                </p>
-
-                                <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-white/75">
-                                  {comment.content}
-                                </p>
-
-                                <p className="mt-1 text-[10px] text-white/25">
-                                  {formatDate(comment.created_at)}
-                                </p>
-                              </div>
-                            </div>
-                          ))
+                            )
+                          )
                         )}
                       </div>
 
                       {/* COMMENT INPUT */}
                       <div className="mt-4 flex gap-2">
                         <input
-                          value={commentText[post.id] || ""}
+                          value={
+                            commentText[
+                              post.id
+                            ] || ""
+                          }
                           onChange={(e) =>
-                            setCommentText((current) => ({
-                              ...current,
-                              [post.id]: e.target.value,
-                            }))
+                            setCommentText(
+                              (current) => ({
+                                ...current,
+                                [post.id]:
+                                  e.target
+                                    .value,
+                              })
+                            )
                           }
                           onKeyDown={(e) => {
                             if (
-                              e.key === "Enter" &&
+                              e.key ===
+                                "Enter" &&
                               !e.shiftKey
                             ) {
                               e.preventDefault();
 
                               if (
-                                (commentText[post.id] || "").trim()
+                                (
+                                  commentText[
+                                    post.id
+                                  ] ||
+                                  ""
+                                ).trim()
                               ) {
-                                submitComment(post.id);
+                                submitComment(
+                                  post.id
+                                );
                               }
                             }
                           }}
@@ -770,15 +893,23 @@ export default function FeedPage() {
                         <button
                           type="button"
                           onClick={() =>
-                            submitComment(post.id)
+                            submitComment(
+                              post.id
+                            )
                           }
                           disabled={
-                            submittingComment === post.id ||
-                            !(commentText[post.id] || "").trim()
+                            submittingComment ===
+                              post.id ||
+                            !(
+                              commentText[
+                                post.id
+                              ] || ""
+                            ).trim()
                           }
                           className="rounded-full bg-blue-600 px-4 py-2 text-sm font-bold transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-30"
                         >
-                          {submittingComment === post.id
+                          {submittingComment ===
+                          post.id
                             ? "..."
                             : "Send"}
                         </button>
@@ -792,74 +923,96 @@ export default function FeedPage() {
         </div>
       </div>
 
-      {/* MOBILE NAV */}
+      {/* MOBILE NAVIGATION */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#050816]/95 backdrop-blur-xl">
         <div className="mx-auto flex max-w-3xl items-center justify-around px-2 py-2">
+          {/* HOME */}
           <button
-            onClick={() => router.push("/feed")}
-            className="flex flex-col items-center gap-1 px-4 py-2 text-blue-400"
+            onClick={() =>
+              router.push("/feed")
+            }
+            className="flex min-w-[60px] flex-col items-center gap-1 px-3 py-2 text-blue-400"
           >
             <span className="text-xl">
               🏠
             </span>
 
-            <span className="text-[10px]">
+            <span className="text-[10px] font-medium">
               Home
             </span>
           </button>
 
+          {/* DISCOVER / COMMUNITY */}
           <button
             onClick={() =>
               router.push("/discover")
             }
-            className="flex flex-col items-center gap-1 px-4 py-2 text-white/40"
+            className="flex min-w-[60px] flex-col items-center gap-1 px-3 py-2 text-white/40 transition hover:text-white"
           >
             <span className="text-xl">
               🔎
             </span>
 
-            <span className="text-[10px]">
+            <span className="text-[10px] font-medium">
               Discover
             </span>
           </button>
 
+          {/* CREATE */}
           <button
             onClick={() => {
-              document
-                .querySelector("textarea")
-                ?.focus();
+              const textarea =
+                document.querySelector(
+                  "textarea"
+                ) as HTMLTextAreaElement | null;
+
+              if (textarea) {
+                textarea.scrollIntoView({
+                  behavior: "smooth",
+                  block: "center",
+                });
+
+                setTimeout(() => {
+                  textarea.focus();
+                }, 400);
+              }
             }}
-            className="flex h-12 w-12 -translate-y-3 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 text-2xl font-bold shadow-xl shadow-blue-500/30"
+            aria-label="Create post"
+            className="flex h-12 w-12 -translate-y-3 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 text-2xl font-bold shadow-xl shadow-blue-500/30 transition hover:scale-105"
           >
             +
           </button>
 
+          {/* NOTIFICATIONS */}
           <button
             onClick={() =>
-              router.push("/notifications")
+              router.push(
+                "/notifications"
+              )
             }
-            className="flex flex-col items-center gap-1 px-4 py-2 text-white/40"
+            className="flex min-w-[60px] flex-col items-center gap-1 px-3 py-2 text-white/40 transition hover:text-white"
           >
             <span className="text-xl">
               🔔
             </span>
 
-            <span className="text-[10px]">
+            <span className="text-[10px] font-medium">
               Alerts
             </span>
           </button>
 
+          {/* PROFILE */}
           <button
             onClick={() =>
               router.push("/profile")
             }
-            className="flex flex-col items-center gap-1 px-4 py-2 text-white/40"
+            className="flex min-w-[60px] flex-col items-center gap-1 px-3 py-2 text-white/40 transition hover:text-white"
           >
             <span className="text-xl">
               👤
             </span>
 
-            <span className="text-[10px]">
+            <span className="text-[10px] font-medium">
               Profile
             </span>
           </button>
