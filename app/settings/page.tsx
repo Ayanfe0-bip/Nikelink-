@@ -259,75 +259,27 @@ export default function SettingsPage() {
         </div>
 
         {/* PRIVACY */}
-        <div className="mb-6">
-          <p className="mb-3 px-1 text-xs font-bold uppercase tracking-widest text-white/30">
-            Privacy
-          </p>
+        
+        <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.035]">
+  <button
+    onClick={() => router.push("/settings/blocked")}
+    className="flex w-full items-center justify-between px-5 py-4 text-left transition hover:bg-white/[0.04]"
+  >
+    <div>
+      <p className="text-sm font-semibold">
+        Blocked users
+      </p>
 
-          <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.035]">
-            <div className="flex items-center gap-4 p-5">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-pink-500/10 text-xl">
-                🔒
-              </div>
+      <p className="mt-1 text-sm text-white/40">
+        Manage people you've blocked
+      </p>
+    </div>
 
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold">
-                  Private account
-                </p>
-
-                <p className="mt-1 text-xs text-white/35">
-                  Control who can connect with you
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setPrivateAccount(!privateAccount);
-                  showMessage(
-                    !privateAccount
-                      ? "Private account enabled."
-                      : "Private account disabled."
-                  );
-                }}
-                className={`relative h-7 w-12 shrink-0 rounded-full transition ${
-                  privateAccount
-                    ? "bg-pink-600"
-                    : "bg-white/10"
-                }`}
-              >
-                <span
-                  className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition ${
-                    privateAccount
-                      ? "left-6"
-                      : "left-1"
-                  }`}
-                />
-              </button>
-            </div>
-
-            <div className="border-t border-white/10" />
-
-          onClick={() => router.push("/settings/blocked")
-              }
-              className="flex w-full items-center justify-between px-5 py-4 text-left transition hover:bg-white/[0.04]"
-            >
-              <div>
-                <p className="text-sm font-semibold">
-                  Blocked users
-                </p>
-
-                <p className="mt-1 text-xs text-white/35">
-                  Manage people you've blocked
-                </p>
-              </div>
-
-              <span className="text-white/25">
-                →
-              </span>
-            </button>
-          </div>
-        </div>
+    <span className="text-white/25">
+      →
+    </span>
+  </button>
+</div>
 
         {/* SECURITY */}
         <div className="mb-6">
