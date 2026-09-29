@@ -103,17 +103,45 @@ export default function FeedPage() {
     setLoading(false);
   }
 
-  async function loadPosts() {
-    const { data, error } = await supabase
-      .from("posts")
-      .select("*")
-      .order("created_at", { ascending: false });
+  async function loadFeed() {
+    const { data: userData, error: userError } =
+      await supabase.auth.getUser();
 
-    if (!error && data) {
-      setPosts(data);
+    if (userError || !userData.user) {
+      router.replace("/login");
+      return;
     }
+
+    const currentUserId = userData.user.id;
+    setUserId(currentUserId);
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name, username, avatar_url")
+      .eq("id", currentUserId)
+      .maybeSingle();
+
+    if (profile) {
+      setUserName(
+        profile.full_name ||
+          profile.username ||
+          "Nikelink User"
+      );
+
+      setAvatarUrl(profile.avatar_url || "");
+    }
+
+    await Promise.all([
+      loadPosts(),
+      loadComments(),
+      loadLikes(),
+    ]);
+
+    setLoading(false);
   }
 
+  async function loadPosts() {
+    
   async function loadComments() {
     const { data, error } = await supabase
       .from("comments")
