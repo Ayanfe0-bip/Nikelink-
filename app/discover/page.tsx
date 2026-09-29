@@ -8,10 +8,10 @@ type Profile = {
   id: string;
   full_name: string | null;
   username: string | null;
+  avatar_url: string | null;
   country: string | null;
-  bio: string | null;
-  interests: string[] | null;
-  avatar_url?: string | null;
+  bio?: string | null;
+  interests?: string[] | null;
   created_at?: string | null;
 };
 
@@ -20,6 +20,7 @@ type Connection = {
   requester_id: string;
   receiver_id: string;
   status: "pending" | "accepted" | "declined";
+  created_at?: string;
 };
 
 type FilterType = "all" | "people" | "countries" | "interests";
@@ -32,8 +33,9 @@ export default function DiscoverPage() {
   const [connections, setConnections] = useState<Connection[]>([]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterType>("all");
+
   const [loading, setLoading] = useState(true);
-  const [connectingId, setConnectingId] = useState<string | null>(null);
+  const [actionId, setActionId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
@@ -56,29 +58,35 @@ export default function DiscoverPage() {
 
     setUserId(user.id);
 
+    /*
+     * YOUR REAL TABLE IS: profile
+     */
     const { data: profileData, error: profileError } = await supabase
-      .from("profiles")
+      .from("profile")
       .select("*")
       .neq("id", user.id)
       .order("created_at", { ascending: false });
 
     if (profileError) {
-      console.error("Profiles error:", profileError);
+      console.error("Profile error:", profileError);
       setErrorMessage("We couldn't load people right now.");
     } else {
-      setProfiles(profileData || []);
+      setProfiles((profileData || []) as Profile[]);
     }
 
+    /*
+     * YOUR REAL TABLE IS: connection
+     */
     const { data: connectionData, error: connectionError } =
       await supabase
-        .from("connections")
+        .from("connection")
         .select("*")
         .or(`requester_id.eq.${user.id},receiver_id.eq.${user.id}`);
 
     if (connectionError) {
-      console.error("Connections error:", connectionError);
+      console.error("Connection error:", connectionError);
     } else {
-      setConnections(connectionData || []);
+      setConnections((connectionData || []) as Connection[]);
     }
 
     setLoading(false);
@@ -94,77 +102,76 @@ export default function DiscoverPage() {
     );
   }
 
-  function getButtonText(profileId: string) {
+  function getButtonState(profileId: string) {
     const connection = getConnection(profileId);
 
-    if (!connection) return "Connect";
+    if (!connection) {
+      return "connect";
+    }
 
     if (connection.status === "accepted") {
-      return "Connected";
+      return "connected";
     }
 
     if (
       connection.status === "pending" &&
       connection.requester_id === userId
     ) {
-      return "Request Sent";
+      return "sent";
     }
 
     if (
       connection.status === "pending" &&
       connection.receiver_id === userId
     ) {
-      return "Respond";
+      return "incoming";
     }
 
-    return "Connect";
+    return "connect";
   }
 
-  async function handleConnect(profileId: string) {
-    if (!userId || connectingId) return;
+  async function sendConnectionRequest(profileId: string) {
+    if (!userId || actionId) return;
+
+    setActionId(profileId);
+    setErrorMessage("");
 
     const existing = getConnection(profileId);
 
-    if (existing) {
-      if (existing.status === "accepted") return;
+    /*
+     * If a declined request exists, remove it first.
+     */
+    if (existing?.status === "declined") {
+      const { error: deleteError } = await supabase
+        .from("connection")
+        .delete()
+        .eq("id", existing.id);
 
-      if (
-        existing.status === "pending" &&
-        existing.requester_id === userId
-      ) {
+      if (deleteError) {
+        console.error("Delete declined connection error:", deleteError);
+        setErrorMessage(deleteError.message);
+        setActionId(null);
         return;
       }
 
-      if (
-        existing.status === "pending" &&
-        existing.receiver_id === userId
-      ) {
-        router.push("/notifications");
-        return;
-      }
-
-      if (existing.status === "declined") {
-        const { error: deleteError } = await supabase
-          .from("connections")
-          .delete()
-          .eq("id", existing.id);
-
-        if (deleteError) {
-          console.error("Delete declined connection error:", deleteError);
-          alert(deleteError.message);
-          return;
-        }
-
-        setConnections((current) =>
-          current.filter((connection) => connection.id !== existing.id)
-        );
-      }
+      setConnections((current) =>
+        current.filter((item) => item.id !== existing.id)
+      );
     }
 
-    setConnectingId(profileId);
+    /*
+     * Prevent duplicate pending/accepted requests.
+     */
+    if (
+      existing &&
+      existing.status !== "declined"
+    ) {
+      setActionId(null);
+      return;
+    }
 
     const { data, error } = await supabase
-      .from("connections")
+      .from("connection")
       .insert({
         requester_id: userId,
         receiver_id: profileId,
@@ -174,13 +181,82 @@ export default function DiscoverPage() {
       .single();
 
     if (error) {
-      console.error("Connect error:", error);
-      alert(error.message);
+      console.error("Send connection request error:", error);
+      setErrorMessage(error.message);
     } else if (data) {
-      setConnections((current) => [...current, data]);
+      setConnections((current) => [
+        ...current,
+        data as Connection,
+      ]);
     }
 
-    setConnectingId(null);
+    setActionId(null);
+  }
+
+  async function acceptConnection(connection: Connection) {
+    if (actionId) return;
+
+    setActionId(connection.id);
+    setErrorMessage("");
+
+    const { data, error } = await supabase
+      .from("connection")
+      .update({
+        status: "accepted",
+      })
+      .eq("id", connection.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Accept connection error:", error);
+      setErrorMessage(error.message);
+    } else if (data) {
+      setConnections((current) =>
+        current.map((item) =>
+          item.id === connection.id
+            ? (data as Connection)
+            : item
+        )
+      );
+    }
+
+    setActionId(null);
+  }
+
+  async function declineConnection(connection: Connection) {
+    if (actionId) return;
+
+    setActionId(connection.id);
+    setErrorMessage("");
+
+    const { data, error } = await supabase
+      .from("connection")
+      .update({
+        status: "declined",
+      })
+      .eq("id", connection.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Decline connection error:", error);
+      setErrorMessage(error.message);
+    } else if (data) {
+      setConnections((current) =>
+        current.map((item) =>
+          item.id === connection.id
+            ? (data as Connection)
+            : item
+        )
+      );
+    }
+
+    setActionId(null);
+  }
+
+  function openProfile(profileId: string) {
+    router.push(`/profile?user=${profileId}`);
   }
 
   function getInitials(profile: Profile) {
@@ -191,7 +267,8 @@ export default function DiscoverPage() {
 
       if (parts.length >= 2) {
         return (
-          parts[0].charAt(0) + parts[parts.length - 1].charAt(0)
+          parts[0].charAt(0) +
+          parts[parts.length - 1].charAt(0)
         ).toUpperCase();
       }
 
@@ -199,7 +276,10 @@ export default function DiscoverPage() {
     }
 
     if (profile.username?.trim()) {
-      return profile.username.trim().charAt(0).toUpperCase();
+      return profile.username
+        .trim()
+        .charAt(0)
+        .toUpperCase();
     }
 
     return "?";
@@ -246,30 +326,46 @@ export default function DiscoverPage() {
         return false;
       }
 
-      if (filter === "interests" && !profile.interests?.length) {
+      if (
+        filter === "interests" &&
+        !profile.interests?.length
+      ) {
         return false;
       }
 
       if (!term) return true;
 
       const matchesName =
-        profile.full_name?.toLowerCase().includes(term);
+        profile.full_name
+          ?.toLowerCase()
+          .includes(term);
 
       const matchesUsername =
-        profile.username?.toLowerCase().includes(term);
+        profile.username
+          ?.toLowerCase()
+          .includes(term);
 
       const matchesCountry =
-        profile.country?.toLowerCase().includes(term);
+        profile.country
+          ?.toLowerCase()
+          .includes(term);
 
       const matchesBio =
-        profile.bio?.toLowerCase().includes(term);
+        profile.bio
+          ?.toLowerCase()
+          .includes(term);
 
-      const matchesInterest = profile.interests?.some((interest) =>
-        interest.toLowerCase().includes(term)
-      );
+      const matchesInterest =
+        profile.interests?.some((interest) =>
+          interest.toLowerCase().includes(term)
+        );
 
       if (filter === "people") {
-        return Boolean(matchesName || matchesUsername || matchesBio);
+        return Boolean(
+          matchesName ||
+          matchesUsername ||
+          matchesBio
+        );
       }
 
       if (filter === "countries") {
@@ -282,21 +378,21 @@ export default function DiscoverPage() {
 
       return Boolean(
         matchesName ||
-          matchesUsername ||
-          matchesCountry ||
-          matchesBio ||
-          matchesInterest
+        matchesUsername ||
+        matchesCountry ||
+        matchesBio ||
+        matchesInterest
       );
     });
   }, [profiles, search, filter]);
 
-  const suggestedProfiles = useMemo(() => {
-    return profiles.filter((profile) => {
-      const connection = getConnection(profile.id);
-
-      return !connection || connection.status === "declined";
-    });
-  }, [profiles, connections]);
+  const pendingIncoming = useMemo(() => {
+    return connections.filter(
+      (connection) =>
+        connection.status === "pending" &&
+        connection.receiver_id === userId
+    );
+  }, [connections, userId]);
 
   if (loading) {
     return (
@@ -304,6 +400,7 @@ export default function DiscoverPage() {
         <div className="mx-auto max-w-3xl px-5 py-8">
           <div className="animate-pulse">
             <div className="h-4 w-20 rounded bg-white/10" />
+
             <div className="mt-3 h-9 w-40 rounded bg-white/10" />
 
             <div className="mt-7 h-14 rounded-2xl bg-white/5" />
@@ -336,7 +433,7 @@ export default function DiscoverPage() {
 
   return (
     <main className="min-h-screen bg-[#050816] pb-28 text-white">
-      {/* BACKGROUND GLOW */}
+      {/* BACKGROUND */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute -left-32 top-20 h-72 w-72 rounded-full bg-violet-600/10 blur-3xl" />
         <div className="absolute -right-32 top-96 h-80 w-80 rounded-full bg-blue-600/10 blur-3xl" />
@@ -371,11 +468,15 @@ export default function DiscoverPage() {
 
           {/* SEARCH */}
           <div className="mt-6 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.045] px-4 shadow-inner">
-            <span className="text-lg text-white/40">⌕</span>
+            <span className="text-lg text-white/40">
+              ⌕
+            </span>
 
             <input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) =>
+                setSearch(e.target.value)
+              }
               placeholder="Search people, countries or interests..."
               className="w-full bg-transparent py-4 text-sm text-white outline-none placeholder:text-white/30"
             />
@@ -403,7 +504,9 @@ export default function DiscoverPage() {
               return (
                 <button
                   key={item.id}
-                  onClick={() => setFilter(item.id as FilterType)}
+                  onClick={() =>
+                    setFilter(item.id as FilterType)
+                  }
                   className={`shrink-0 rounded-full px-4 py-2 text-xs font-bold transition ${
                     active
                       ? "bg-gradient-to-r from-violet-600 to-blue-600 text-white shadow-lg shadow-violet-600/20"
@@ -420,6 +523,109 @@ export default function DiscoverPage() {
 
       {/* CONTENT */}
       <section className="relative z-10 mx-auto max-w-3xl px-5 py-7">
+
+        {/* INCOMING REQUESTS */}
+        {pendingIncoming.length > 0 && (
+          <div className="mb-8 rounded-[2rem] border border-violet-500/20 bg-violet-500/[0.07] p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-black">
+                  Connection requests
+                </h2>
+
+                <p className="mt-1 text-xs text-white/40">
+                  People want to connect with you.
+                </p>
+              </div>
+
+              <div className="flex h-9 min-w-9 items-center justify-center rounded-full bg-violet-600 text-xs font-black">
+                {pendingIncoming.length}
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {pendingIncoming.map((connection) => {
+                const requester = profiles.find(
+                  (profile) =>
+                    profile.id ===
+                    connection.requester_id
+                );
+
+                if (!requester) return null;
+
+                const busy =
+                  actionId === connection.id;
+
+                return (
+                  <div
+                    key={connection.id}
+                    className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/20 p-3"
+                  >
+                    <button
+                      onClick={() =>
+                        openProfile(requester.id)
+                      }
+                      className="h-12 w-12 shrink-0 overflow-hidden rounded-xl"
+                    >
+                      {requester.avatar_url ? (
+                        <img
+                          src={requester.avatar_url}
+                          alt={
+                            requester.full_name ||
+                            requester.username ||
+                            "User"
+                          }
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-600 to-blue-600 text-sm font-black">
+                          {getInitials(requester)}
+                        </div>
+                      )}
+                    </button>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-bold">
+                        {requester.full_name ||
+                          requester.username ||
+                          "Nikelink user"}
+                      </p>
+
+                      {requester.username && (
+                        <p className="truncate text-xs text-white/35">
+                          @{requester.username}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        disabled={busy}
+                        onClick={() =>
+                          acceptConnection(connection)
+                        }
+                        className="rounded-xl bg-gradient-to-r from-violet-600 to-blue-600 px-3 py-2 text-xs font-bold disabled:opacity-50"
+                      >
+                        {busy ? "..." : "Accept"}
+                      </button>
+
+                      <button
+                        disabled={busy}
+                        onClick={() =>
+                          declineConnection(connection)
+                        }
+                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-white/60 disabled:opacity-50"
+                      >
+                        Decline
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* DISCOVERY HERO */}
         {!search && filter === "all" && (
           <div className="relative mb-8 overflow-hidden rounded-[2rem] border border-violet-500/20 bg-gradient-to-br from-violet-600/15 via-blue-600/10 to-pink-600/10 p-6">
@@ -435,8 +641,8 @@ export default function DiscoverPage() {
               </h2>
 
               <p className="mt-2 max-w-xl text-sm leading-6 text-white/55">
-                Discover people with shared interests, different
-                backgrounds and new perspectives.
+                Discover people with shared interests,
+                different backgrounds and new perspectives.
               </p>
 
               <div className="mt-5 flex items-center gap-3 text-xs text-white/40">
@@ -450,21 +656,19 @@ export default function DiscoverPage() {
           </div>
         )}
 
-        {/* POPULAR INTERESTS */}
+        {/* INTERESTS */}
         {!search &&
           filter === "all" &&
           interests.length > 0 && (
             <div className="mb-8">
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-black">
-                    Explore interests
-                  </h2>
+              <div className="mb-4">
+                <h2 className="text-lg font-black">
+                  Explore interests
+                </h2>
 
-                  <p className="mt-1 text-xs text-white/40">
-                    Find people who share your interests.
-                  </p>
-                </div>
+                <p className="mt-1 text-xs text-white/40">
+                  Find people who share your interests.
+                </p>
               </div>
 
               <div className="flex gap-2 overflow-x-auto pb-2">
@@ -479,12 +683,12 @@ export default function DiscoverPage() {
                   >
                     {interest}
                   </button>
-                ))}
+              ))}
               </div>
             </div>
           )}
 
-        {/* COUNTRY STRIP */}
+        {/* COUNTRIES */}
         {!search &&
           filter === "all" &&
           countries.length > 0 && (
@@ -495,14 +699,16 @@ export default function DiscoverPage() {
                 </h2>
 
                 <p className="mt-1 text-xs text-white/40">
-                  People are joining Nikelink from different places.
+                  People are joining Nikelink from
+                  different places.
                 </p>
               </div>
 
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {countries.slice(0, 6).map((country) => {
                   const count = profiles.filter(
-                    (profile) => profile.country === country
+                    (profile) =>
+                      profile.country === country
                   ).length;
 
                   return (
@@ -514,7 +720,9 @@ export default function DiscoverPage() {
                       }}
                       className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-left transition hover:border-violet-500/30 hover:bg-white/[0.06]"
                     >
-                      <div className="text-xl">🌍</div>
+                      <div className="text-xl">
+                        🌍
+                      </div>
 
                       <p className="mt-3 truncate text-sm font-bold">
                         {country}
@@ -522,7 +730,9 @@ export default function DiscoverPage() {
 
                       <p className="mt-1 text-xs text-white/35">
                         {count}{" "}
-                        {count === 1 ? "person" : "people"}
+                        {count === 1
+                          ? "person"
+                          : "people"}
                       </p>
                     </button>
                   );
@@ -545,7 +755,7 @@ export default function DiscoverPage() {
           </div>
         )}
 
-        {/* RESULTS HEADER */}
+        {/* RESULTS */}
         <div className="mb-5 flex items-end justify-between gap-4">
           <div>
             <h2 className="text-xl font-black">
@@ -576,7 +786,7 @@ export default function DiscoverPage() {
           )}
         </div>
 
-        {/* EMPTY STATE */}
+        {/* EMPTY */}
         {filteredProfiles.length === 0 ? (
           <div className="rounded-[2rem] border border-white/10 bg-white/[0.035] p-10 text-center">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600/20 to-blue-600/20 text-3xl">
@@ -588,8 +798,9 @@ export default function DiscoverPage() {
             </h3>
 
             <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-white/40">
-              Try another name, country or interest. More people
-              will appear here as Nikelink grows.
+              Try another name, country or interest.
+              More people will appear here as Nikelink
+              grows.
             </p>
 
             {(search || filter !== "all") && (
@@ -607,13 +818,14 @@ export default function DiscoverPage() {
         ) : (
           <div className="space-y-4">
             {filteredProfiles.map((profile, index) => {
-              const buttonText = getButtonText(profile.id);
-              const isConnecting =
-                connectingId === profile.id;
+              const state = getButtonState(profile.id);
+              const busy = actionId === profile.id;
 
-              const hasAvatar = Boolean(
-                profile.avatar_url?.trim()
-              );
+              const hasAvatar =
+                Boolean(profile.avatar_url?.trim());
+
+              const connection =
+                getConnection(profile.id);
 
               return (
                 <article
@@ -624,11 +836,11 @@ export default function DiscoverPage() {
                     {/* AVATAR */}
                     <button
                       onClick={() =>
-                        router.push(
-                          `/profile?user=${profile.id}`
-                        )
+                        openProfile(profile.id)
                       }
-                      className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl"
+                      className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br ${getAvatarGradient(
+                        index
+                      )}`}
                     >
                       {hasAvatar ? (
                         <img
@@ -641,66 +853,50 @@ export default function DiscoverPage() {
                           className="h-full w-full object-cover"
                         />
                       ) : (
-                        <div
-                 className={`flex h-full w-full items-center justify-center bg-gradient-to-br ${getAvatarGradient(
-                            index
-                          )} text-xl font-black`}
-                        >
+                        <div className="flex h-full w-full items-center justify-center text-lg font-black">
                           {getInitials(profile)}
                         </div>
                       )}
-
-                      <div className="absolute bottom-1 right-1 h-3 w-3 rounded-full border-2 border-[#101426] bg-emerald-400" />
                     </button>
 
-                    {/* DETAILS */}
-                    <div className="min-w-0 flex-1">
-                      <button
-                        onClick={() =>
-                          router.push(
-                            `/profile?user=${profile.id}`
-                          )
-                        }
-                        className="block max-w-full text-left"
-                      >
-                        <h3 className="truncate font-black">
+                    {/* PROFILE INFO */}
+                    <button
+                      onClick={() =>
+                        openProfile(profile.id)
+                      }
+                      className="min-w-0 flex-1 text-left"
+                    >
+                      <div className="flex items-center gap-2">
+                        <h3 className="truncate text-base font-black">
                           {profile.full_name ||
-                            "Nikelink User"}
+                            profile.username ||
+                            "Nikelink user"}
                         </h3>
 
-                        {profile.username && (
-                          <p className="mt-1 truncate text-sm text-violet-400">
-                            @{profile.username}
-                          </p>
+                        {state === "connected" && (
+                          <span className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-emerald-300">
+                            Connected
+                          </span>
                         )}
-                      </button>
+                      </div>
+
+                      {profile.username && (
+                        <p className="mt-1 truncate text-xs text-violet-300/70">
+                          @{profile.username}
+                        </p>
+                      )}
 
                       {profile.country && (
-                        <p className="mt-2 truncate text-xs text-white/40">
+                        <p className="mt-2 truncate text-xs text-white/35">
                           🌍 {profile.country}
                         </p>
                       )}
-                    </div>
-
-                    {/* STATUS */}
-                    <div className="shrink-0">
-                      {buttonText === "Connected" && (
-                        <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-[10px] font-bold text-emerald-300">
-                          Connected
-                        </span>
-                      )}
-
-                      {buttonText === "Request Sent" && (
-                        <span className="rounded-full bg-white/5 px-3 py-1 text-[10px] font-bold text-white/40">
-                          Pending
-                        </span>
-                      )}
-                    </div>
+                    </button>
                   </div>
 
                   {/* BIO */}
                   {profile.bio && (
-                    <p className="mt-4 line-clamp-2 text-sm leading-6 text-white/55">
+                    <p className="mt-4 line-clamp-2 text-sm leading-6 text-white/45">
                       {profile.bio}
                     </p>
                   )}
@@ -710,145 +906,156 @@ export default function DiscoverPage() {
                     profile.interests.length > 0 && (
                       <div className="mt-4 flex flex-wrap gap-2">
                         {profile.interests
-                          .slice(0, 5)
+                          .slice(0, 4)
                           .map((interest) => (
-                            <button
+                            <span
                               key={interest}
-                              onClick={() => {
-                                setSearch(interest);
-                                setFilter("interests");
-                              }}
-                              className="rounded-full border border-violet-500/15 bg-violet-500/10 px-3 py-1 text-[11px] font-semibold text-violet-300 transition hover:bg-violet-500/20"
+                              className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-semibold text-white/50"
                             >
                               {interest}
-                            </button>
+                            </span>
                           ))}
                       </div>
                     )}
 
-                  {/* ACTIONS */}
-                  <div className="mt-5 flex gap-3">
-                    <button
-                      onClick={() =>
-                        router.push(
-                          `/profile?user=${profile.id}`
-                        )
-                      }
-                      className="flex-1 rounded-xl border border-white/10 bg-white/5 py-3 text-sm font-bold text-white/75 transition hover:bg-white/10 hover:text-white"
-                    >
-                      View Profile
-                    </button>
+                  {/* ACTION */}
+                  <div className="mt-5">
+                    {state === "connect" && (
+                      <button
+                        disabled={busy}
+                        onClick={() =>
+                          sendConnectionRequest(
+                            profile.id
+                          )
+                        }
+                        className="w-full rounded-xl bg-gradient-to-r from-violet-600 to-blue-600 py-3 text-sm font-black shadow-lg shadow-violet-600/20 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {busy
+                          ? "Sending..."
+                          : "Connect"}
+                      </button>
+                    )}
 
-                    <button
-                      onClick={() =>
-                        handleConnect(profile.id)
-                      }
-                      disabled={
-                        isConnecting ||
-                        buttonText === "Connected" ||
-                        buttonText === "Request Sent"
-                      }
-                      className={`flex-1 rounded-xl py-3 text-sm font-black transition ${
-                        buttonText === "Connected"
-                          ? "bg-emerald-500/10 text-emerald-300"
-                          : buttonText === "Request Sent"
-                            ? "bg-white/5 text-white/40"
-                            : buttonText === "Respond"
-                              ? "bg-gradient-to-r from-pink-600 to-violet-600 text-white shadow-lg shadow-violet-600/20 hover:opacity-90"
-                              : "bg-gradient-to-r from-violet-600 to-blue-600 text-white shadow-lg shadow-violet-600/20 hover:opacity-90"
-                      }`}
-                    >
-                      {isConnecting
-                        ? "Sending..."
-                        : buttonText}
-                    </button>
+                    {state === "sent" && (
+                      <button
+                        disabled
+                        className="w-full rounded-xl border border-violet-500/20 bg-violet-500/10 py-3 text-sm font-bold text-violet-300"
+                      >
+                        ✓ Request Sent
+                      </button>
+                    )}
+
+                    {state === "incoming" &&
+                      connection && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            disabled={
+                              actionId === connection.id
+                            }
+                            onClick={() =>
+                              acceptConnection(
+                                connection
+                              )
+                            }
+                            className="rounded-xl bg-gradient-to-r from-violet-600 to-blue-600 py-3 text-sm font-black disabled:opacity-50"
+                          >
+                            {actionId ===
+                            connection.id
+                              ? "..."
+                              : "Accept"}
+                          </button>
+
+                          <button
+                            disabled={
+                              actionId === connection.id
+                            }
+                            onClick={() =>
+                              declineConnection(
+                                connection
+                              )
+                            }
+                            className="rounded-xl border border-white/10 bg-white/5 py-3 text-sm font-bold text-white/60 disabled:opacity-50"
+                          >
+                            Decline
+                          </button>
+                        </div>
+                      )}
+
+                    {state === "connected" && (
+                      <button
+                        onClick={() =>
+                          router.push(
+                            `/messages?user=${profile.id}`
+                          )
+                        }
+                        className="w-full rounded-xl border border-emerald-500/20 bg-emerald-500/10 py-3 text-sm font-bold text-emerald-300 transition hover:bg-emerald-500/15"
+                      >
+                        ✓ Connected · Message
+                      </button>
+                    )}
                   </div>
                 </article>
               );
             })}
           </div>
         )}
-
-        {/* DISCOVERY FOOTER */}
-        {suggestedProfiles.length > 0 &&
-          !search &&
-          filter === "all" && (
-            <div className="mt-10 rounded-[2rem] border border-white/10 bg-gradient-to-br from-white/[0.045] to-white/[0.02] p-6 text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600/20 to-blue-600/20 text-xl">
-                ✨
-              </div>
-
-              <h3 className="mt-4 font-black">
-                Keep exploring
-              </h3>
-
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-white/40">
-                Nikelink is built to help people connect beyond
-                borders, interests and everyday circles.
-              </p>
-            </div>
-          )}
       </section>
 
-      {/* MOBILE NAVIGATION */}
-<nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#050816]/95 backdrop-blur-2xl">
-  <div className="mx-auto grid h-20 max-w-3xl grid-cols-4">
+      {/* BOTTOM NAV */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#050816]/95 px-3 py-3 backdrop-blur-2xl">
+        <div className="mx-auto grid max-w-3xl grid-cols-5 gap-1">
+          <button
+            onClick={() => router.push("/feed")}
+            className="flex flex-col items-center gap-1 rounded-xl py-2 text-white/45 transition hover:bg-white/5 hover:text-white"
+          >
+            <span className="text-xl">⌂</span>
+            <span className="text-[10px] font-bold">
+              Home
+            </span>
+          </button>
 
-    {/* HOME */}
-    <button
-      onClick={() => router.push("/dashboard")}
-      className="flex flex-col items-center justify-center gap-1 text-white/45 transition hover:text-white"
-    >
-      <span className="text-xl">⌂</span>
-      <span className="text-[10px]">
-        Home
-      </span>
-    </button>
+          <button
+            onClick={() => router.push("/discover")}
+            className="flex flex-col items-center gap-1 rounded-xl bg-violet-500/10 py-2 text-violet-300"
+          >
+            <span className="text-xl">⌕</span>
+            <span className="text-[10px] font-bold">
+              Discover
+            </span>
+          </button>
 
-    {/* DISCOVER */}
-    <button
-      onClick={() => router.push("/discover")}
-      className="flex flex-col items-center justify-center gap-1 text-violet-400"
-    >
-      <span className="text-xl">
-        ◎
-      </span>
+          <button
+            onClick={() => router.push("/communities")}
+            className="flex flex-col items-center gap-1 rounded-xl py-2 text-white/45 transition hover:bg-white/5 hover:text-white"
+          >
+            <span className="text-xl">◉</span>
+            <span className="text-[10px] font-bold">
+              Community
+            </span>
+          </button>
 
-      <span className="text-[10px] font-bold">
-        Discover
-      </span>
-    </button>
+          <button
+            onClick={() => router.push("/messages")}
+            className="flex flex-col items-center gap-1 rounded-xl py-2 text-white/45 transition hover:bg-white/5 hover:text-white"
+          >
+            <span className="text-xl">✉</span>
+            <span className="text-[10px] font-bold">
+              Messages
+            </span>
+          </button>
 
-    {/* COMMUNITY */}
-    <button
-      onClick={() => router.push("/communities")}
-      className="flex flex-col items-center justify-center gap-1 text-white/45 transition hover:text-white"
-    >
-      <span className="text-xl">
-        ◈
-      </span>
-
-      <span className="text-[10px]">
-        Community
-      </span>
-    </button>
-
-    {/* MESSAGES */}
-    <button
-      onClick={() => router.push("/messages")}
-      className="flex flex-col items-center justify-center gap-1 text-white/45 transition hover:text-white"
-    >
-      <span className="text-xl">
-        ◌
-      </span>
-
-      <span className="text-[10px]">
-        Messages
-      </span>
-    </button>
-
-  </div>
+          <button
+            onClick={() => router.push("/profile")}
+            className="flex flex-col items-center gap-1 rounded-xl py-2 text-white/45 transition hover:bg-white/5 hover:text-white"
+          >
+            <span className="text-xl">👤</span>
+            <span className="text-[10px] font-bold">
+              Profile
+            </span>
+          </button>
+        </div>
       </nav>
     </main>
   );
-}
+                }
+              
