@@ -281,18 +281,19 @@ function GlobalActivity() {
             </div>
           )}
         </div>
-
+        
         {/* CTA */}
-        <div className="border-t border-white/10 p-5">
-          <button
-            onClick={() => router.push("/discover")}
-            className="w-full rounded-2xl bg-gradient-to-r from-blue-600 via-violet-600 to-pink-600 py-3.5 text-xs font-black shadow-lg shadow-violet-600/20 transition hover:brightness-110"
-          >
-            Discover people around the world →
-          </button>
-        </div>
-      </div>
-    </section>
+<div className="border-t border-white/10 p-5">
+  <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3.5 text-center">
+    <p className="text-xs font-bold text-white/60">
+      🌐 Nikelink is connecting people globally
+    </p>
+
+    <p className="mt-1 text-[10px] text-white/30">
+      Discover people, communities and conversations from around the world.
+    </p>
+  </div>
+</div>
   );
 }
 export default function DiscoverPage() {
