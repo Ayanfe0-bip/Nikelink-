@@ -28,35 +28,6 @@ type FilterType =
   | "people"
   | "countries"
   | "interests";
-
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { supabase } from "../lib/supabase";
-
-type Profile = {
-  id: string;
-  full_name: string | null;
-  username: string | null;
-  avatar_url: string | null;
-  country: string | null;
-  bio?: string | null;
-  interests?: string[] | null;
-  created_at?: string | null;
-};
-
-type Connection = {
-  id: string;
-  requester_id: string;
-  receiver_id: string;
-  status: "pending" | "accepted" | "declined";
-  created_at?: string;
-};
-
-type FilterType =
-  | "all"
-  | "people"
-  | "countries"
-  | "interests";
 function GlobalActivity() {
   const [memberCount, setMemberCount] = useState(0);
   const [countries, setCountries] = useState<
