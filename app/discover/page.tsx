@@ -1,4 +1,4 @@
-"use client";
+2"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -830,9 +830,7 @@ export default function DiscoverPage() {
                 circle. Explore Nikelink and find
                 connections that matter.
               </p>
-
-              <div className="mt-6 grid grid-cols-3 gap-2">
-                <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+<div className="rounded-2xl border border-white/10 bg-black/20 p-3">
                   <p className="text-lg font-black">
                     {profiles.length}
                   </p>
@@ -840,15 +838,6 @@ export default function DiscoverPage() {
                   <p className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-white/35">
                     People
                   </p>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-                  <p className="text-lg font-black">
-                    {countries.length}
-                  </p>
-
-                  <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide
-                    </p>
                 </div>
 
                 <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
@@ -870,8 +859,6 @@ export default function DiscoverPage() {
                     Interests
                   </p>
                 </div>
-              </div>
-
               {connectedCount > 0 && (
                 <div className="mt-4 rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.06] px-4 py-3">
                   <p className="text-xs text-emerald-300">
