@@ -25,15 +25,24 @@ type Like = {
   user_id: string;
 };
 
+type Profile = {
+  id: string;
+  full_name: string | null;
+  username: string | null;
+  avatar_url: string | null;
+};
+
 export default function FeedPage() {
   const router = useRouter();
 
   const [userId, setUserId] = useState("");
+  const [userName, setUserName] = useState("Nikelink User");
   const [avatarUrl, setAvatarUrl] = useState("");
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [likes, setLikes] = useState<Like[]>([]);
+  const [profiles, setProfiles] = useState<Record<string, Profile>>({});
 
   const [commentText, setCommentText] = useState<
     Record<string, string>
@@ -70,54 +79,12 @@ export default function FeedPage() {
     }
 
     const currentUserId = userData.user.id;
+
     setUserId(currentUserId);
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("full_name, username, avatar_url")
-      .eq("id", currentUserId)
-      .maybeSingle();
-
-    if (profile) {
-  setUserName(
-    profile.full_name ||
-      profile.username ||
-      "Nikelink User"
-  );
-
-  setAvatarUrl(profile.avatar_url || "");
-    }
-      setUserName(
-        profile.full_name ||
-          profile.username ||
-          "Nikelink User"
-      );
-    }
-
-    await Promise.all([
-      loadPosts(),
-      loadComments(),
-      loadLikes(),
-    ]);
-
-    setLoading(false);
-  }
-
-  async function loadFeed() {
-    const { data: userData, error: userError } =
-      await supabase.auth.getUser();
-
-    if (userError || !userData.user) {
-      router.replace("/login");
-      return;
-    }
-
-    const currentUserId = userData.user.id;
-    setUserId(currentUserId);
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("full_name, username, avatar_url")
+      .select("id, full_name, username, avatar_url")
       .eq("id", currentUserId)
       .maybeSingle();
 
@@ -141,7 +108,49 @@ export default function FeedPage() {
   }
 
   async function loadPosts() {
-    
+    const { data, error } = await supabase
+      .from("posts")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error loading posts:", error);
+      return;
+    }
+
+    if (data) {
+      setPosts(data);
+
+      const userIds = [
+        ...new Set(
+          data
+            .map((post) => post.user_id)
+            .filter(Boolean)
+        ),
+      ];
+
+      if (userIds.length > 0) {
+        const { data: authorProfiles, error: profileError } =
+          await supabase
+            .from("profiles")
+            .select(
+              "id, full_name, username, avatar_url"
+            )
+            .in("id", userIds);
+
+        if (!profileError && authorProfiles) {
+          const profileMap: Record<string, Profile> = {};
+
+          authorProfiles.forEach((profile) => {
+            profileMap[profile.id] = profile;
+          });
+
+          setProfiles(profileMap);
+        }
+      }
+    }
+  }
+
   async function loadComments() {
     const { data, error } = await supabase
       .from("comments")
@@ -194,6 +203,16 @@ export default function FeedPage() {
 
     if (data) {
       setPosts((current) => [data, ...current]);
+
+      setProfiles((current) => ({
+        ...current,
+        [userId]: {
+          id: userId,
+          full_name: userName,
+          username: null,
+          avatar_url: avatarUrl || null,
+        },
+      }));
     }
 
     setNewPost("");
@@ -387,11 +406,6 @@ export default function FeedPage() {
     }, 2000);
   }
 
-  async function handleSignOut() {
-    await supabase.auth.signOut();
-    router.replace("/login");
-  }
-
   function formatDate(date: string) {
     const created = new Date(date);
     const now = new Date();
@@ -427,6 +441,25 @@ export default function FeedPage() {
     return comments.filter(
       (comment) => comment.post_id === postId
     );
+  }
+
+  function getAuthor(post: Post) {
+    if (post.user_id === userId) {
+      return {
+        name: userName,
+        avatar: avatarUrl,
+      };
+    }
+
+    const profile = profiles[post.user_id];
+
+    return {
+      name:
+        profile?.full_name ||
+        profile?.username ||
+        "Nikelink User",
+      avatar: profile?.avatar_url || "",
+    };
   }
 
   if (loading) {
@@ -482,26 +515,38 @@ export default function FeedPage() {
               className="flex h-10 items-center gap-2 rounded-full bg-gradient-to-r from-blue-500 via-violet-500 to-pink-500 px-4 text-sm font-bold shadow-lg shadow-violet-500/20"
             >
               <span className="text-lg">+</span>
+
               <span className="hidden sm:inline">
                 Create Post
               </span>
+
               <span className="sm:hidden">
                 Post
               </span>
             </button>
 
             {/* PROFILE AVATAR */}
-            {avatarUrl ? (
-  <img
-    src={avatarUrl}
-    alt="Your profile"
-    className="h-full w-full object-cover"
-  />
-) : (
-  <span className="flex h-full w-full items-center justify-center font-bold">
-    {userName.charAt(0).toUpperCase()}
-  </span>
-)}
+            <button
+              onClick={() => router.push("/profile")}
+              className="h-10 w-10 overflow-hidden rounded-full border border-white/10 bg-gradient-to-br from-blue-500 via-violet-500 to-pink-500 shadow-lg shadow-blue-500/20"
+              aria-label="Profile"
+            >
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt="Your profile"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center font-bold">
+                  {userName.charAt(0).toUpperCase()}
+                </span>
+              )}
+            </button>
+
+          </div>
+        </div>
+      </header>
 
       {/* MAIN CONTENT */}
       <div className="mx-auto max-w-3xl px-4 py-6">
@@ -528,8 +573,19 @@ export default function FeedPage() {
         >
           <div className="mb-4 flex items-center gap-3">
 
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-violet-500 to-pink-500 text-lg font-black">
-              {userName.charAt(0).toUpperCase()}
+            {/* CURRENT USER AVATAR */}
+            <div className="h-11 w-11 overflow-hidden rounded-full bg-gradient-to-br from-blue-500 via-violet-500 to-pink-500 text-lg font-black">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt="Your profile"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center">
+                  {userName.charAt(0).toUpperCase()}
+                </div>
+              )}
             </div>
 
             <div>
@@ -584,6 +640,7 @@ export default function FeedPage() {
 
           {posts.length === 0 ? (
             <div className="rounded-3xl border border-white/10 bg-white/[0.04] px-6 py-12 text-center">
+
               <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/20 to-violet-500/20 text-2xl">
                 ✨
               </div>
@@ -595,6 +652,7 @@ export default function FeedPage() {
               <p className="mt-2 text-sm text-white/40">
                 Be the first to share something with your community.
               </p>
+
             </div>
           ) : (
             posts.map((post) => {
@@ -606,7 +664,10 @@ export default function FeedPage() {
                 (like) => like.user_id === userId
               );
 
-              const isOwner = post.user_id === userId;
+              const isOwner =
+                post.user_id === userId;
+
+              const author = getAuthor(post);
 
               return (
                 <article
@@ -619,26 +680,55 @@ export default function FeedPage() {
 
                     <div className="flex items-center gap-3">
 
-                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-violet-500 to-pink-500 font-black">
-                        {isOwner
-                          ? userName.charAt(0).toUpperCase()
-                          : "N"}
-                      </div>
+                      {/* POST AUTHOR AVATAR */}
+                      <button
+                        onClick={() =>
+                          router.push(
+                            isOwner
+                              ? "/profile"
+                              : `/profile?user=${post.user_id}`
+                          )
+                        }
+                        className="h-11 w-11 flex-shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-blue-500 via-violet-500 to-pink-500 font-black"
+                        aria-label={`${author.name} profile`}
+                      >
+                        {author.avatar ? (
+                          <img
+                            src={author.avatar}
+                            alt={author.name}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <span className="flex h-full w-full items-center justify-center">
+                            {author.name
+                              .charAt(0)
+                              .toUpperCase()}
+                          </span>
+                        )}
+                      </button>
 
-                      <div>
+                      <button
+                        onClick={() =>
+                          router.push(
+                            isOwner
+                              ? "/profile"
+                              : `/profile?user=${post.user_id}`
+                          )
+                        }
+                        className="text-left"
+                      >
                         <p className="font-semibold">
-                          {isOwner
-                            ? userName
-                            : "Nikelink User"}
+                          {author.name}
                         </p>
 
                         <p className="text-xs text-white/35">
                           {formatDate(post.created_at)}
                         </p>
-                      </div>
+                      </button>
 
                     </div>
 
+                    {/* POST MENU */}
                     <div className="relative">
 
                       <button
@@ -742,23 +832,26 @@ export default function FeedPage() {
                   {/* ACTIONS */}
                   <div className="grid grid-cols-3 border-t border-white/10">
 
+                    {/* LIKE */}
                     <button
                       onClick={() =>
                         toggleLike(post.id)
                       }
-                      className={`flex items-center justify-center gap-2 py-3 text-sm transition ${
+                      className={`flex items-center justify-center gap-2 py-3 text-sm transition hover:bg-white/5 ${
                         likedByUser
                           ? "text-pink-400"
-                          : "text-white/45 hover:bg-white/5 hover:text-white"
+                          : "text-white/50"
                       }`}
                     >
                       <span>
                         {likedByUser ? "♥" : "♡"}
                       </span>
+
                       <span>Like</span>
                     </button>
 
-                      <button
+                    {/* COMMENT */}
+                    <button
                       onClick={() =>
                         setOpenComments((current) => ({
                           ...current,
@@ -766,17 +859,18 @@ export default function FeedPage() {
                             !current[post.id],
                         }))
                       }
-                      className="flex items-center justify-center gap-2 border-x border-white/10 py-3 text-sm text-white/45 hover:bg-white/5 hover:text-white"
+                      className="flex items-center justify-center gap-2 py-3 text-sm text-white/50 transition hover:bg-white/5 hover:text-white"
                     >
                       <span>💬</span>
                       <span>Comment</span>
                     </button>
 
+                    {/* SHARE */}
                     <button
                       onClick={() =>
                         handleShare(post)
                       }
-                      className="flex items-center justify-center gap-2 py-3 text-sm text-white/45 hover:bg-white/5 hover:text-white"
+                      className="flex items-center justify-center gap-2 py-3 text-sm text-white/50 transition hover:bg-white/5 hover:text-white"
                     >
                       <span>↗</span>
                       <span>Share</span>
@@ -786,86 +880,115 @@ export default function FeedPage() {
 
                   {/* COMMENTS */}
                   {openComments[post.id] && (
-                    <div className="border-t border-white/10 bg-black/10 p-4">
+                    <div className="border-t border-white/10 bg-black/10 px-4 py-4">
 
-                      <div className="mb-4 space-y-3">
+                      <div className="space-y-3">
 
                         {postComments.length === 0 ? (
-                          <p className="text-sm text-white/30">
-                            No comments yet.
+                          <p className="text-xs text-white/30">
+                            No comments yet. Start the conversation.
                           </p>
                         ) : (
-                          postComments.map((comment) => (
+                          postComments.map((comment) => {
 
-                            <div
-                              key={comment.id}
-                              className="flex gap-3"
-                            >
+                            const commentProfile =
+                              profiles[comment.user_id];
 
-                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 text-xs font-bold">
-                                {comment.user_id ===
-                                userId
-                                  ? userName
+                            const commentName =
+                              comment.user_id === userId
+                                ? userName
+                                : commentProfile?.full_name ||
+                                  commentProfile?.username ||
+                                  "Nikelink User";
+
+                            return (
+                              <div
+                                key={comment.id}
+                                className="flex gap-3"
+                              >
+
+                                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-blue-500/60 to-violet-500/60 text-xs font-bold">
+
+                                  {comment.user_id ===
+                                    userId &&
+                                  avatarUrl ? (
+                                    <img
+                                      src={avatarUrl}
+                                      alt={commentName}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : commentProfile?.avatar_url ? (
+                                    <img
+                                      src={
+                                        commentProfile.avatar_url
+                                      }
+                                      alt={commentName}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    commentName
                                       .charAt(0)
                                       .toUpperCase()
-                                  : "N"}
+                                  )}
+
+                                </div>
+
+                                <div className="min-w-0 flex-1 rounded-2xl bg-white/5 px-3 py-2">
+
+                                  <p className="text-xs font-bold">
+                                    {commentName}
+                                  </p>
+
+                                  <p className="mt-1 whitespace-pre-wrap break-words text-sm text-white/70">
+                                    {comment.content}
+                                  </p>
+
+                                </div>
+
                               </div>
-
-                              <div className="min-w-0 flex-1 rounded-2xl bg-white/5 px-3 py-2">
-
-                                <p className="text-xs font-semibold text-white/70">
-                                  {comment.user_id ===
-                                  userId
-                                    ? userName
-                                    : "Nikelink User"}
-                                </p>
-
-                                <p className="mt-1 break-words text-sm text-white/70">
-                                  {comment.content}
-                                </p>
-
-                              </div>
-
-                            </div>
-
-                          ))
+                            );
+                          })
                         )}
 
                       </div>
 
-                      <form
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          submitComment(post.id);
-                        }}
-                        className="flex gap-2"
-                      >
+                      {/* COMMENT INPUT */}
+                      <div className="mt-4 flex gap-2">
 
                         <input
                           value={
                             commentText[post.id] || ""
                           }
                           onChange={(e) =>
-                            setCommentText(
-                              (current) => ({
-                                ...current,
-                                [post.id]:
-                                  e.target.value,
-                              })
-                            )
+                            setCommentText((current) => ({
+                              ...current,
+                              [post.id]:
+                                e.target.value,
+                            }))
                           }
+                          onKeyDown={(e) => {
+                            if (
+                              e.key === "Enter" &&
+                              !e.shiftKey
+                            ) {
+                              e.preventDefault();
+                              submitComment(post.id);
+                            }
+                          }}
                           placeholder="Write a comment..."
-                          className="min-w-0 flex-1 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none placeholder:text-white/25 focus:border-violet-400/50"
+                          className="min-w-0 flex-1 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-violet-400/50"
                         />
 
                         <button
-                          type="submit"
+                          onClick={() =>
+                            submitComment(post.id)
+                          }
                           disabled={
                             submittingComment ===
                               post.id ||
                             !(commentText[post.id] || "").trim()
                           }
-                          className="rounded-full bg-violet-600 px-4 py-2 text-sm font-bold disabled:opacity-40"
+                          className="rounded-full bg-gradient-to-r from-blue-500 to-violet-600 px-4 py-2 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           {submittingComment ===
                           post.id
@@ -873,7 +996,7 @@ export default function FeedPage() {
                             : "Send"}
                         </button>
 
-                      </form>
+                      </div>
 
                     </div>
                   )}
@@ -887,15 +1010,7 @@ export default function FeedPage() {
 
       </div>
 
-      {/* =====================================================
-          STANDARD NIKELINK BOTTOM NAVIGATION
-          ONLY:
-          HOME | DISCOVER | COMMUNITY | MESSAGES
-
-          NO:
-          + | ALERTS | PROFILE
-          ===================================================== */}
-
+      {/* STANDARD NIKELINK BOTTOM NAVIGATION */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#050816]/95 shadow-[0_-10px_40px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
 
         <div className="mx-auto grid max-w-3xl grid-cols-4 px-2 py-2">
