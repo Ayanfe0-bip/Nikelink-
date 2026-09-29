@@ -313,11 +313,26 @@ function GlobalActivity() {
         </div>
         
         {/* CTA */}
-<div className="border-t border-white/10 p-5">
-  <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3.5 text-center">
-    <p className="text-xs font-bold text-white/60">
-      🌐 Nikelink is connecting people globally
-    </p>
+        <div className="border-t border-white/10 p-5">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3.5 text-center">
+            <p className="text-xs font-bold text-white/60">
+              🌐 Nikelink is connecting people globally
+            </p>
+
+            <p className="mt-1 text-[10px] leading-5 text-white/30">
+              Discover people, communities and conversations from around the world.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export default function DiscoverPage() {
+  const router = useRouter();
+
+  const [userId, setUserId] = useState("");
 
 export default function DiscoverPage() {
   const router = useRouter();
