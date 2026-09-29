@@ -296,6 +296,7 @@ function GlobalActivity() {
 </div>
   );
 }
+
 export default function DiscoverPage() {
   const router = useRouter();
 
