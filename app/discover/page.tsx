@@ -28,7 +28,6 @@ type FilterType =
   | "people"
   | "countries"
   | "interests";
-"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
