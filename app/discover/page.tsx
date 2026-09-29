@@ -28,7 +28,273 @@ type FilterType =
   | "people"
   | "countries"
   | "interests";
+function GlobalActivity() {
+  const [memberCount, setMemberCount] = useState(0);
+  const [countries, setCountries] = useState<
+    { country: string; count: number }[]
+  >([]);
+  const [topInterests, setTopInterests] = useState<
+    { interest: string; count: number }[]
+  >([]);
+  const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    loadGlobalActivity();
+  }, []);
+
+  async function loadGlobalActivity() {
+    setLoading(true);
+
+    const { data, error } = await supabase
+      .from("profile")
+      .select("country, interests");
+
+    if (error) {
+      console.error(
+        "Global activity error:",
+        error
+      );
+
+      setLoading(false);
+      return;
+    }
+
+    const profiles = data || [];
+
+    setMemberCount(profiles.length);
+
+    const countryMap: Record<string, number> = {};
+    const interestMap: Record<string, number> = {};
+
+    profiles.forEach((profile) => {
+      if (profile.country) {
+        const country =
+          String(profile.country).trim();
+
+        if (country) {
+          countryMap[country] =
+            (countryMap[country] || 0) + 1;
+        }
+      }
+
+      if (Array.isArray(profile.interests)) {
+        profile.interests.forEach(
+          (interest: string) => {
+            const value =
+              String(interest).trim();
+
+            if (value) {
+              interestMap[value] =
+                (interestMap[value] || 0) + 1;
+            }
+          }
+        );
+      }
+    });
+
+    const countryList = Object.entries(
+      countryMap
+    )
+      .map(([country, count]) => ({
+        country,
+        count,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6);
+
+    const interestList = Object.entries(
+      interestMap
+    )
+      .map(([interest, count]) => ({
+        interest,
+        count,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6);
+
+    setCountries(countryList);
+    setTopInterests(interestList);
+    setLoading(false);
+  }
+
+  return (
+    <section className="mt-10">
+      {/* SECTION HEADER */}
+      <div className="mb-5">
+        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-blue-300/70">
+          Nikelink Global
+        </p>
+
+        <h2 className="mt-1 text-2xl font-black tracking-tight">
+          🌍 The world is here
+        </h2>
+
+        <p className="mt-1 max-w-xl text-sm leading-6 text-white/40">
+          See how the Nikelink community is growing
+          across countries and interests.
+        </p>
+      </div>
+
+      {/* GLOBAL CARD */}
+      <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br from-blue-500/[0.08] via-violet-500/[0.06] to-pink-500/[0.06] shadow-2xl shadow-black/20">
+
+        {/* GLOBE VISUAL */}
+        <div className="relative flex h-56 items-center justify-center overflow-hidden border-b border-white/10">
+
+          <div className="absolute h-52 w-52 rounded-full border border-blue-400/20 shadow-[0_0_80px_rgba(59,130,246,0.18)]" />
+
+          <div className="absolute h-40 w-40 rounded-full border border-violet-400/20" />
+
+          <div className="absolute h-28 w-28 rounded-full border border-pink-400/20" />
+
+          <div className="absolute h-2 w-2 rounded-full bg-blue-400 shadow-[0_0_20px_rgba(96,165,250,0.9)]" />
+
+          <div className="absolute left-[28%] top-[30%] h-2 w-2 rounded-full bg-violet-400 shadow-[0_0_18px_rgba(167,139,250,0.9)]" />
+
+          <div className="absolute right-[27%] top-[42%] h-2 w-2 rounded-full bg-pink-400 shadow-[0_0_18px_rgba(244,114,182,0.9)]" />
+
+          <div className="absolute bottom-[27%] left-[35%] h-1.5 w-1.5 rounded-full bg-cyan-300 shadow-[0_0_15px_rgba(103,232,249,0.9)]" />
+
+          <div className="relative flex h-24 w-24 items-center justify-center rounded-full border border-white/10 bg-[#080d20]/90 text-5xl shadow-2xl">
+            🌍
+          </div>
+
+          <div className="absolute bottom-4 rounded-full border border-white/10 bg-black/30 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-white/50 backdrop-blur-md">
+            Connect globally
+          </div>
+        </div>
+
+        {/* STATS */}
+        <div className="grid grid-cols-2 gap-px bg-white/10">
+          <div className="bg-[#080d20]/70 p-5">
+            <p className="text-[10px] font-black uppercase tracking-wider text-white/30">
+              Members
+            </p>
+
+            <p className="mt-2 text-3xl font-black">
+              {loading ? "—" : memberCount}
+            </p>
+
+            <p className="mt-1 text-xs text-white/35">
+              People on Nikelink
+            </p>
+          </div>
+
+          <div className="bg-[#080d20]/70 p-5">
+            <p className="text-[10px] font-black uppercase tracking-wider text-white/30">
+              Countries
+            </p>
+
+            <p className="mt-2 text-3xl font-black">
+              {loading ? "—" : countries.length}
+            </p>
+
+            <p className="mt-1 text-xs text-white/35">
+              Countries represented
+            </p>
+          </div>
+        </div>
+
+        {/* COUNTRIES */}
+        <div className="border-t border-white/10 p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-black">
+                🌎 Around the world
+              </p>
+
+              <p className="mt-1 text-xs text-white/35">
+                Community members by country
+              </p>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="rounded-2xl bg-white/[0.04] p-4 text-center text-xs text-white/30">
+              Loading global activity...
+            </div>
+          ) : countries.length === 0 ? (
+            <div className="rounded-2xl bg-white/[0.04] p-4 text-center text-xs text-white/30">
+              Add your country to your profile to appear here.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {countries.map((item, index) => (
+                <div
+                  key={item.country}
+                  className="flex items-center justify-between rounded-2xl border border-white/5 bg-white/[0.035] px-4 py-3"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="text-sm">
+                      {index === 0
+                        ? "🌐"
+                        : index === 1
+                          ? "✨"
+                          : "📍"}
+                    </span>
+
+                    <span className="truncate text-sm font-bold text-white/80">
+                      {item.country}
+                    </span>
+                  </div>
+
+                  <span className="shrink-0 rounded-full bg-white/5 px-2.5 py-1 text-[10px] font-black text-white/40">
+                    {item.count}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* INTERESTS */}
+        <div className="border-t border-white/10 p-5">
+          <p className="text-sm font-black">
+            ✨ Popular interests
+          </p>
+
+          <p className="mt-1 text-xs text-white/35">
+            What people are connecting around
+          </p>
+
+          {loading ? (
+            <div className="mt-4 rounded-2xl bg-white/[0.04] p-4 text-center text-xs text-white/30">
+              Loading interests...
+            </div>
+          ) : topInterests.length === 0 ? (
+            <div className="mt-4 rounded-2xl bg-white/[0.04] p-4 text-center text-xs text-white/30">
+              Interests will appear as people join.
+            </div>
+          ) : (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {topInterests.map((item) => (
+                <div
+                  key={item.interest}
+                  className="rounded-full border border-violet-400/10 bg-violet-500/10 px-3 py-2 text-xs font-bold text-violet-200"
+                >
+                  {item.interest}
+                  <span className="ml-1.5 text-violet-300/40">
+                    {item.count}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* CTA */}
+        <div className="border-t border-white/10 p-5">
+          <button
+            onClick={() => router.push("/discover")}
+            className="w-full rounded-2xl bg-gradient-to-r from-blue-600 via-violet-600 to-pink-600 py-3.5 text-xs font-black shadow-lg shadow-violet-600/20 transition hover:brightness-110"
+          >
+            Discover people around the world →
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
 export default function DiscoverPage() {
   const router = useRouter();
 
@@ -1507,6 +1773,7 @@ export default function DiscoverPage() {
             </button>
           </div>
         </section>
+        <GlobalActivity />
         {/* GLOBAL FOOTER MESSAGE */}
         {showExplore &&
           profiles.length > 0 && (
