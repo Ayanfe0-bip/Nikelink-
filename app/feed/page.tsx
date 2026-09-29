@@ -29,7 +29,7 @@ export default function FeedPage() {
   const router = useRouter();
 
   const [userId, setUserId] = useState("");
-  const [userName, setUserName] = useState("Nikelink User");
+  const [avatarUrl, setAvatarUrl] = useState("");
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -74,11 +74,19 @@ export default function FeedPage() {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("full_name, username")
+      .select("full_name, username, avatar_url")
       .eq("id", currentUserId)
       .maybeSingle();
 
     if (profile) {
+  setUserName(
+    profile.full_name ||
+      profile.username ||
+      "Nikelink User"
+  );
+
+  setAvatarUrl(profile.avatar_url || "");
+    }
       setUserName(
         profile.full_name ||
           profile.username ||
@@ -455,17 +463,17 @@ export default function FeedPage() {
             </button>
 
             {/* PROFILE AVATAR */}
-            <button
-              onClick={() => router.push("/profile")}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 font-bold shadow-lg shadow-blue-500/20"
-              aria-label="Profile"
-            >
-              {userName.charAt(0).toUpperCase()}
-            </button>
-
-          </div>
-        </div>
-      </header>
+            {avatarUrl ? (
+  <img
+    src={avatarUrl}
+    alt="Your profile"
+    className="h-full w-full object-cover"
+  />
+) : (
+  <span className="flex h-full w-full items-center justify-center font-bold">
+    {userName.charAt(0).toUpperCase()}
+  </span>
+)}
 
       {/* MAIN CONTENT */}
       <div className="mx-auto max-w-3xl px-4 py-6">
