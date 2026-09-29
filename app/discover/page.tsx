@@ -303,8 +303,6 @@ export default function DiscoverPage() {
   const router = useRouter();
 
   const [userId, setUserId] = useState("");
-
-  const [userId, setUserId] = useState("");
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [search, Search] = useState("");
