@@ -19,6 +19,29 @@ type Message = {
   created_at: string;
 };
 
+const navItems = [
+  {
+    label: "Home",
+    icon: "⌂",
+    path: "/feed",
+  },
+  {
+    label: "Discover",
+    icon: "⌕",
+    path: "/discover",
+  },
+  {
+    label: "Community",
+    icon: "◉",
+    path: "/communities",
+  },
+  {
+    label: "Messages",
+    icon: "✉",
+    path: "/messages",
+  },
+];
+
 export default function MessagesPage() {
   const router = useRouter();
 
@@ -29,6 +52,7 @@ export default function MessagesPage() {
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -48,8 +72,10 @@ export default function MessagesPage() {
         .eq("status", "accepted")
         .or(`requester_id.eq.${id},receiver_id.eq.${id}`);
 
-      const ids = (connections || []).map((c) =>
-        c.requester_id === id ? c.receiver_id : c.requester_id
+      const ids = (connections || []).map((connection) =>
+        connection.requester_id === id
+          ? connection.receiver_id
+          : connection.requester_id
       );
 
       if (ids.length) {
@@ -78,7 +104,7 @@ export default function MessagesPage() {
     if (!userId) return;
 
     const channel = supabase
-      .channel("nikelink-messages")
+      .channel(`nikelink-messages-${userId}`)
       .on(
         "postgres_changes",
         {
@@ -94,7 +120,10 @@ export default function MessagesPage() {
             message.receiver_id === userId
           ) {
             setMessages((old) => {
-              if (old.some((m) => m.id === message.id)) return old;
+              if (old.some((item) => item.id === message.id)) {
+                return old;
+              }
+
               return [...old, message];
             });
           }
@@ -107,28 +136,50 @@ export default function MessagesPage() {
     };
   }, [userId]);
 
+  const filteredProfiles = useMemo(() => {
+    const value = search.trim().toLowerCase();
+
+    if (!value) return profiles;
+
+    return profiles.filter((profile) => {
+      const fullName = profile.full_name?.toLowerCase() || "";
+      const username = profile.username?.toLowerCase() || "";
+      const country = profile.country?.toLowerCase() || "";
+
+      return (
+        fullName.includes(value) ||
+        username.includes(value) ||
+        country.includes(value)
+      );
+    });
+  }, [profiles, search]);
+
   const conversation = useMemo(() => {
     if (!selected) return [];
 
     return messages.filter(
-      (m) =>
-        (m.sender_id === userId && m.receiver_id === selected.id) ||
-        (m.sender_id === selected.id && m.receiver_id === userId)
+      (message) =>
+        (message.sender_id === userId &&
+          message.receiver_id === selected.id) ||
+        (message.sender_id === selected.id &&
+          message.receiver_id === userId)
     );
   }, [messages, selected, userId]);
 
   function lastMessage(id: string) {
     const list = messages.filter(
-      (m) =>
-        (m.sender_id === userId && m.receiver_id === id) ||
-        (m.sender_id === id && m.receiver_id === userId)
+      (message) =>
+        (message.sender_id === userId && message.receiver_id === id) ||
+        (message.sender_id === id && message.receiver_id === userId)
     );
 
     return list[list.length - 1];
   }
 
   async function sendMessage() {
-    if (!text.trim() || !selected || !userId || sending) return;
+    const content = text.trim();
+
+    if (!content || !selected || !userId || sending) return;
 
     setSending(true);
 
@@ -137,13 +188,20 @@ export default function MessagesPage() {
       .insert({
         sender_id: userId,
         receiver_id: selected.id,
-        content: text.trim(),
+        content,
       })
       .select()
       .single();
 
     if (!error && data) {
-      setMessages((old) => [...old, data]);
+      setMessages((old) => {
+        if (old.some((message) => message.id === data.id)) {
+          return old;
+        }
+
+        return [...old, data];
+      });
+
       setText("");
     }
 
@@ -161,120 +219,253 @@ export default function MessagesPage() {
     return profile.full_name || profile.username || "Nikelink User";
   }
 
-  return (
-    <main className="min-h-screen bg-[#050816] text-white">
-      <header className="border-b border-white/10 p-4">
-        <button
-          onClick={() => router.push("/dashboard")}
-          className="text-sm text-white/50"
-        >
-          ← Dashboard
-        </button>
+  function initials(profile: Profile) {
+    const value = name(profile).trim();
 
-        <h1 className="mt-2 text-2xl font-bold">Messages</h1>
+    if (!value) return "N";
+
+    const parts = value.split(/\s+/);
+
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    }
+
+    return value.slice(0, 2).toUpperCase();
+  }
+
+  return (
+    <main className="min-h-screen bg-[#050816] pb-24 text-white">
+      {/* Background glow */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute left-[-120px] top-[-120px] h-72 w-72 rounded-full bg-violet-600/10 blur-[100px]" />
+        <div className="absolute bottom-[-120px] right-[-120px] h-80 w-80 rounded-full bg-pink-600/10 blur-[110px]" />
+      </div>
+
+      {/* Top header */}
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#050816]/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-violet-300">
+              Nikelink
+            </p>
+
+            <h1 className="mt-1 text-2xl font-bold tracking-tight">
+              Messages
+            </h1>
+          </div>
+
+          <button
+            onClick={() => router.push("/feed")}
+            className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white/70 transition hover:bg-white/10 hover:text-white"
+          >
+            Home
+          </button>
+        </div>
       </header>
 
-      <div className="mx-auto flex max-w-6xl">
+      <div className="relative mx-auto flex max-w-6xl overflow-hidden border-x border-white/5">
+        {/* Conversation list */}
         <aside
-          className={`w-full border-r border-white/10 md:w-80 ${
-            selected ? "hidden md:block" : "block"
+          className={`w-full border-r border-white/10 bg-white/[0.015] md:block md:w-[350px] ${
+            selected ? "hidden" : "block"
           }`}
         >
-          <div className="border-b border-white/10 p-4 font-semibold">
-            Conversations
+          <div className="border-b border-white/10 p-4">
+            <div className="mb-3">
+              <p className="text-sm font-semibold text-white/90">
+                Your connections
+              </p>
+
+              <p className="mt-1 text-xs text-white/35">
+                Conversations with people you're connected to.
+              </p>
+            </div>
+
+            <div className="relative">
+              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-white/30">
+                ⌕
+              </span>
+
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search conversations"
+                className="w-full rounded-2xl border border-white/10 bg-white/5 py-3 pl-10 pr-4 text-sm text-white outline-none placeholder:text-white/25 focus:border-violet-500/60 focus:bg-white/[0.07]"
+              />
+            </div>
           </div>
 
           {loading ? (
-            <p className="p-5 text-white/40">
-              Loading...
-            </p>
-          ) : profiles.length === 0 ? (
-            <div className="p-6 text-center text-white/40">
-              No connections yet.
+            <div className="space-y-3 p-4">
+              {[1, 2, 3, 4].map((item) => (
+                <div
+                  key={item}
+                  className="flex animate-pulse gap-3 rounded-2xl border border-white/5 bg-white/[0.03] p-4"
+                >
+                  <div className="h-12 w-12 rounded-full bg-white/10" />
+
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 w-28 rounded bg-white/10" />
+                    <div className="h-3 w-40 rounded bg-white/5" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filteredProfiles.length === 0 ? (
+            <div className="px-8 py-16 text-center">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl border border-white/10 bg-white/5 text-2xl">
+                💬
+              </div>
+
+              <h2 className="mt-5 font-semibold">
+                {search ? "No conversations found" : "No connections yet"}
+              </h2>
+
+              <p className="mt-2 text-sm leading-6 text-white/35">
+                {search
+                  ? "Try another name, username or country."
+                  : "Connect with people on Nikelink and your conversations will appear here."}
+              </p>
+
+              {!search && (
+                <button
+                  onClick={() => router.push("/discover")}
+                  className="mt-5 rounded-xl bg-gradient-to-r from-violet-600 to-pink-500 px-5 py-3 text-sm font-bold"
+                >
+                  Discover people
+                </button>
+              )}
             </div>
           ) : (
-            profiles.map((profile) => {
-              const last = lastMessage(profile.id);
+            <div className="p-2">
+              {filteredProfiles.map((profile) => {
+                const last = lastMessage(profile.id);
+                const active = selected?.id === profile.id;
 
-              return (
-                <button
-                  key={profile.id}
-                  onClick={() => setSelected(profile)}
-                  className="flex w-full gap-3 border-b border-white/5 p-4 text-left hover:bg-white/5"
-                >
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-pink-500 font-bold">
-                    {name(profile)[0]?.toUpperCase()}
-                  </div>
+                return (
+                  <button
+                    key={profile.id}
+                    onClick={() => setSelected(profile)}
+                    className={`mb-1 flex w-full gap-3 rounded-2xl p-3 text-left transition ${
+                      active
+                        ? "border border-violet-500/30 bg-violet-500/10"
+                        : "border border-transparent hover:bg-white/5"
+                    }`}
+                  >
+                    <div className="relative shrink-0">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 via-blue-500 to-pink-500 text-sm font-bold shadow-lg shadow-violet-900/20">
+                        {initials(profile)}
+                      </div>
 
-                  <div className="min-w-0 flex-1">
-                    <div className="flex justify-between gap-2">
-                      <span className="truncate font-semibold">
-                        {name(profile)}
-                      </span>
-
-                      {last && (
-                        <span className="text-[10px] text-white/30">
-                          {time(last.created_at)}
-                        </span>
-                      )}
+                      <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#080a18] bg-emerald-400" />
                     </div>
 
-                    <p className="mt-1 truncate text-xs text-white/40">
-                      {last
-                        ? last.sender_id === userId
-                          ? `You: ${last.content}`
-                          : last.content
-                        : "Start a conversation"}
-                    </p>
-                  </div>
-                </button>
-              );
-            })
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="truncate text-sm font-semibold">
+                          {name(profile)}
+                        </span>
+
+                        {last && (
+                          <span className="shrink-0 text-[10px] text-white/25">
+                            {time(last.created_at)}
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="mt-1 truncate text-xs text-white/35">
+                        {last
+                          ? last.sender_id === userId
+                            ? `You: ${last.content}`
+                            : last.content
+                          : "Start a conversation"}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           )}
         </aside>
 
+        {/* Chat area */}
         <section
-          className={`flex min-h-[calc(100vh-90px)] flex-1 flex-col ${
+          className={`flex min-h-[calc(100vh-80px)] flex-1 flex-col ${
             selected ? "flex" : "hidden md:flex"
           }`}
         >
           {!selected ? (
-            <div className="flex flex-1 items-center justify-center text-white/40">
-              Select a conversation
+            <div className="relative flex flex-1 items-center justify-center px-8 text-center">
+              <div>
+                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[28px] border border-violet-400/20 bg-gradient-to-br from-violet-500/15 to-pink-500/10 text-3xl shadow-2xl shadow-violet-900/20">
+                  ✉
+                </div>
+
+                <h2 className="mt-6 text-xl font-bold">
+                  Your conversations
+                </h2>
+
+                <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-white/35">
+                  Select a connection to start a private conversation on
+                  Nikelink.
+                </p>
+              </div>
             </div>
           ) : (
             <>
-              <div className="flex items-center gap-3 border-b border-white/10 p-4">
+              {/* Chat header */}
+              <div className="flex items-center gap-3 border-b border-white/10 bg-white/[0.015] p-4">
                 <button
                   onClick={() => setSelected(null)}
-                  className="md:hidden"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-lg text-white/70 md:hidden"
                 >
                   ←
                 </button>
 
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-pink-500 font-bold">
-                  {name(selected)[0]?.toUpperCase()}
+                <div className="relative">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 via-blue-500 to-pink-500 text-sm font-bold">
+                    {initials(selected)}
+                  </div>
+
+                  <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#080a18] bg-emerald-400" />
                 </div>
 
-                <div>
-                  <p className="font-semibold">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold">
                     {name(selected)}
                   </p>
 
-                  <p className="text-xs text-white/40">
+                  <p className="mt-0.5 truncate text-xs text-white/35">
                     {selected.username
                       ? `@${selected.username}`
                       : selected.country || "Nikelink connection"}
                   </p>
                 </div>
+
+                <button
+                  className="hidden h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/60 transition hover:bg-white/10 hover:text-white sm:flex"
+                  title="More options"
+                >
+                  •••
+                </button>
               </div>
 
-              <div className="flex-1 space-y-3 overflow-y-auto p-4">
+              {/* Messages */}
+              <div className="flex-1 space-y-3 overflow-y-auto px-4 py-5">
                 {conversation.length === 0 ? (
-                  <div className="flex h-full items-center justify-center text-center text-white/40">
+                  <div className="flex min-h-[55vh] items-center justify-center text-center">
                     <div>
-                      <div className="mb-3 text-3xl">👋</div>
-                      <p>Start the conversation.</p>
+                      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-violet-400/20 bg-violet-500/10 text-2xl">
+                        👋
+                      </div>
+
+                      <h3 className="mt-4 font-semibold">
+                        Start the conversation
+                      </h3>
+
+                      <p className="mt-2 text-sm text-white/35">
+                        Say hello to {name(selected)}.
+                      </p>
                     </div>
                   </div>
                 ) : (
@@ -289,17 +480,21 @@ export default function MessagesPage() {
                         }`}
                       >
                         <div
-                          className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                          className={`max-w-[82%] rounded-3xl px-4 py-3 shadow-lg ${
                             mine
-                              ? "bg-gradient-to-r from-violet-600 to-pink-500"
-                              : "border border-white/10 bg-white/5"
+                              ? "rounded-br-md bg-gradient-to-br from-violet-600 to-pink-500 shadow-violet-950/20"
+                              : "rounded-bl-md border border-white/10 bg-white/[0.06]"
                           }`}
                         >
-                          <p className="break-words text-sm">
+                          <p className="break-words text-sm leading-6">
                             {message.content}
                           </p>
 
-                          <p className="mt-1 text-[10px] text-white/40">
+                          <p
+                            className={`mt-1 text-[10px] ${
+                              mine ? "text-white/55" : "text-white/30"
+                            }`}
+                          >
                             {time(message.created_at)}
                           </p>
                         </div>
@@ -309,31 +504,74 @@ export default function MessagesPage() {
                 )}
               </div>
 
-              <div className="border-t border-white/10 p-3">
-                <div className="flex gap-2">
-                  <input
+              {/* Composer */}
+              <div className="border-t border-white/10 bg-[#050816]/90 p-3 backdrop-blur-xl">
+                <div className="flex items-end gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-2">
+                  <button
+                    className="mb-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg text-white/40 transition hover:bg-white/10 hover:text-white"
+                    title="Add attachment"
+                  >
+                    +
+                  </button>
+
+                  <textarea
                     value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") sendMessage();
+                    onChange={(event) => setText(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !event.shiftKey) {
+                        event.preventDefault();
+                        sendMessage();
+                      }
                     }}
                     placeholder="Write a message..."
-                    className="min-w-0 flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none focus:border-violet-500"
+                    rows={1}
+                    className="max-h-28 min-h-10 flex-1 resize-none bg-transparent px-2 py-2.5 text-sm text-white outline-none placeholder:text-white/25"
                   />
 
                   <button
                     onClick={sendMessage}
                     disabled={!text.trim() || sending}
-                    className="rounded-xl bg-violet-600 px-5 font-bold disabled:opacity-40"
+                    className="flex h-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-r from-violet-600 to-pink-500 px-4 text-sm font-bold shadow-lg shadow-violet-950/20 transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-30"
                   >
                     {sending ? "..." : "Send"}
                   </button>
                 </div>
+
+                <p className="mt-2 hidden text-center text-[10px] text-white/20 sm:block">
+                  Press Enter to send · Shift + Enter for a new line
+                </p>
               </div>
             </>
           )}
         </section>
       </div>
+
+      {/* Bottom navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#050816]/95 backdrop-blur-2xl">
+        <div className="mx-auto flex max-w-2xl items-center justify-around px-2 py-2">
+          {navItems.map((item) => {
+            const active = item.path === "/messages";
+
+            return (
+              <button
+                key={item.path}
+                onClick={() => router.push(item.path)}
+                className={`flex min-w-[70px] flex-col items-center gap-1 rounded-2xl px-4 py-2 transition ${
+                  active
+                    ? "bg-violet-500/10 text-violet-300"
+                    : "text-white/35 hover:bg-white/5 hover:text-white/70"
+                }`}
+              >
+                <span className="text-xl leading-none">{item.icon}</span>
+
+                <span className="text-[10px] font-semibold">
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
     </main>
   );
-                      }
+      }
