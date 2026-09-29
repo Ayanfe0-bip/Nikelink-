@@ -1456,7 +1456,57 @@ export default function DiscoverPage() {
             )}
           </div>
         )}
+{/* WHAT'S HAPPENING ON NIKELINK */}
+        <section className="mt-10">
+          <div className="mb-5 flex items-end justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-violet-300/70">
+                Nikelink Live
+              </p>
 
+              <h2 className="mt-1 text-2xl font-black tracking-tight">
+                🔥 What's Happening
+              </h2>
+
+              <p className="mt-1 text-sm text-white/40">
+                Discover conversations from the Nikelink community.
+              </p>
+            </div>
+
+            <button
+              onClick={() => router.push("/feed")}
+              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[10px] font-black text-white/60 transition hover:bg-white/10 hover:text-white"
+            >
+              View feed
+            </button>
+          </div>
+
+          <div className="rounded-[2rem] border border-white/10 bg-white/[0.035] p-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600/30 to-blue-600/30 text-xl">
+                🌐
+              </div>
+
+              <div>
+                <p className="text-sm font-black text-white">
+                  The Nikelink community is growing
+                </p>
+
+                <p className="mt-1 text-xs text-white/40">
+                  Check the Feed to see the latest public conversations,
+                  posts and community activity.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => router.push("/feed")}
+              className="mt-5 w-full rounded-xl bg-gradient-to-r from-violet-600 to-blue-600 py-3 text-xs font-black shadow-lg shadow-violet-600/20 transition hover:brightness-110"
+            >
+              Explore conversations →
+            </button>
+          </div>
+        </section>
         {/* GLOBAL FOOTER MESSAGE */}
         {showExplore &&
           profiles.length > 0 && (
