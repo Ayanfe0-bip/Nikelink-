@@ -1270,7 +1270,8 @@ useEffect(() => {
 
                 return (
                   <article
-                    key={post.id}
+             id={`post-${post.id}`}
+                key={post.id}
                     className="relative overflow-visible rounded-3xl border border-white/10 bg-white/[0.04] shadow-xl shadow-black/20"
                   >
 
