@@ -33,9 +33,13 @@ function GlobalActivity() {
   const [countries, setCountries] = useState<
     { country: string; count: number }[]
   >([]);
+  const [totalCountries, setTotalCountries] =
+    useState(0);
+
   const [topInterests, setTopInterests] = useState<
     { interest: string; count: number }[]
   >([]);
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -92,15 +96,17 @@ function GlobalActivity() {
       }
     });
 
-    const countryList = Object.entries(
+    const allCountries = Object.entries(
       countryMap
     )
       .map(([country, count]) => ({
         country,
         count,
       }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 6);
+      .sort((a, b) => b.count - a.count);
+
+    const countryList =
+      allCountries.slice(0, 6);
 
     const interestList = Object.entries(
       interestMap
@@ -113,9 +119,15 @@ function GlobalActivity() {
       .slice(0, 6);
 
     setCountries(countryList);
+    setTotalCountries(allCountries.length);
     setTopInterests(interestList);
     setLoading(false);
   }
+
+  const highestCountryCount =
+    countries.length > 0
+      ? countries[0].count
+      : 1;
 
   return (
     <section className="mt-10">
@@ -143,21 +155,19 @@ function GlobalActivity() {
 
           {/* Ambient glow */}
           <div className="absolute h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
+
           <div className="absolute h-48 w-48 rounded-full bg-violet-500/10 blur-3xl" />
 
-          {/* Orbit ring 1 */}
+          {/* Orbit rings */}
           <div className="absolute h-60 w-60 rounded-full border border-blue-400/20 rotate-[18deg] shadow-[0_0_45px_rgba(59,130,246,0.12)]" />
 
-          {/* Orbit ring 2 */}
           <div className="absolute h-52 w-52 rounded-full border border-violet-400/20 rotate-[-35deg]" />
 
-          {/* Orbit ring 3 */}
           <div className="absolute h-44 w-44 rounded-full border border-pink-400/20 rotate-[65deg]" />
 
-          {/* Horizontal globe line */}
+          {/* Globe lines */}
           <div className="absolute h-24 w-60 rounded-[50%] border border-blue-300/15" />
 
-          {/* Vertical globe line */}
           <div className="absolute h-60 w-24 rounded-[50%] border border-violet-300/15" />
 
           {/* Connection lines */}
@@ -167,18 +177,41 @@ function GlobalActivity() {
 
           <div className="absolute h-px w-32 rotate-[52deg] bg-gradient-to-r from-transparent via-pink-400/40 to-transparent" />
 
-          {/* Activity nodes */}
-          <div className="absolute left-[23%] top-[31%] h-2.5 w-2.5 rounded-full bg-blue-400 shadow-[0_0_20px_rgba(96,165,250,1)]" />
+          {/* Dynamic activity nodes */}
 
-          <div className="absolute right-[24%] top-[28%] h-2 w-2 rounded-full bg-violet-400 shadow-[0_0_18px_rgba(167,139,250,1)]" />
+          {countries.length > 0 && (
+            <>
+              <div
+                className="absolute left-[22%] top-[31%] h-2.5 w-2.5 rounded-full bg-blue-400 shadow-[0_0_20px_rgba(96,165,250,1)]"
+                title={countries[0]?.country}
+              />
 
-          <div className="absolute right-[19%] top-[55%] h-2.5 w-2.5 rounded-full bg-pink-400 shadow-[0_0_20px_rgba(244,114,182,1)]" />
+              <div
+                className="absolute right-[24%] top-[28%] h-2 w-2 rounded-full bg-violet-400 shadow-[0_0_18px_rgba(167,139,250,1)]"
+                title={countries[1]?.country}
+              />
 
-          <div className="absolute left-[30%] bottom-[25%] h-2 w-2 rounded-full bg-cyan-300 shadow-[0_0_18px_rgba(103,232,249,1)]" />
+              <div
+                className="absolute right-[19%] top-[55%] h-2.5 w-2.5 rounded-full bg-pink-400 shadow-[0_0_20px_rgba(244,114,182,1)]"
+                title={countries[2]?.country}
+              />
 
-          <div className="absolute left-[48%] top-[18%] h-1.5 w-1.5 rounded-full bg-white shadow-[0_0_14px_rgba(255,255,255,0.9)]" />
+              <div
+                className="absolute left-[30%] bottom-[25%] h-2 w-2 rounded-full bg-cyan-300 shadow-[0_0_18px_rgba(103,232,249,1)]"
+                title={countries[3]?.country}
+              />
 
-          <div className="absolute right-[39%] bottom-[20%] h-1.5 w-1.5 rounded-full bg-blue-300 shadow-[0_0_14px_rgba(147,197,253,0.9)]" />
+              <div
+                className="absolute left-[48%] top-[18%] h-1.5 w-1.5 rounded-full bg-white shadow-[0_0_14px_rgba(255,255,255,0.9)]"
+                title={countries[4]?.country}
+              />
+
+              <div
+                className="absolute right-[39%] bottom-[20%] h-1.5 w-1.5 rounded-full bg-blue-300 shadow-[0_0_14px_rgba(147,197,253,0.9)]"
+                title={countries[5]?.country}
+              />
+            </>
+          )}
 
           {/* Globe */}
           <div className="relative z-10 flex h-28 w-28 items-center justify-center rounded-full border border-white/10 bg-[#080d20]/95 text-6xl shadow-[0_0_70px_rgba(59,130,246,0.28)]">
@@ -188,11 +221,17 @@ function GlobalActivity() {
           {/* Status */}
           <div className="absolute bottom-4 z-20 flex items-center gap-2 rounded-full border border-white/10 bg-black/40 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-white/55 backdrop-blur-xl">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
-            Global activity
+
+            {loading
+              ? "Loading activity"
+              : `${memberCount} ${
+                  memberCount === 1
+                    ? "member"
+                    : "members"
+                } connected`}
           </div>
         </div>
 
-      
         {/* STATS */}
         <div className="grid grid-cols-2 gap-px bg-white/10">
           <div className="bg-[#080d20]/70 p-5">
@@ -215,7 +254,9 @@ function GlobalActivity() {
             </p>
 
             <p className="mt-2 text-3xl font-black">
-              {loading ? "—" : countries.length}
+              {loading
+                ? "—"
+                : totalCountries}
             </p>
 
             <p className="mt-1 text-xs text-white/35">
@@ -236,6 +277,13 @@ function GlobalActivity() {
                 Community members by country
               </p>
             </div>
+
+            {!loading &&
+              totalCountries > 6 && (
+                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-bold text-white/40">
+                  Top 6
+                </span>
+              )}
           </div>
 
           {loading ? (
@@ -247,31 +295,67 @@ function GlobalActivity() {
               Add your country to your profile to appear here.
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {countries.map((item, index) => (
-                <div
-                  key={item.country}
-                  className="flex items-center justify-between rounded-2xl border border-white/5 bg-white/[0.035] px-4 py-3"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="text-sm">
-                      {index === 0
-                        ? "🌐"
-                        : index === 1
-                          ? "✨"
-                          : "📍"}
-                    </span>
+            <div className="space-y-3">
+              {countries.map(
+                (item, index) => {
+                  const percentage = Math.max(
+                    12,
+                    Math.round(
+                      (item.count /
+                        highestCountryCount) *
+                        100
+                    )
+                  );
 
-                    <span className="truncate text-sm font-bold text-white/80">
-                      {item.country}
-                    </span>
-                  </div>
+                  return (
+                    <div
+                      key={item.country}
+                      className="rounded-2xl border border-white/5 bg-white/[0.035] p-3.5"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/5 text-sm">
+                            {index === 0
+                              ? "🌐"
+                              : index === 1
+                                ? "✨"
+                                : index === 2
+                                  ? "🌎"
+                                  : "📍"}
+                          </span>
 
-                  <span className="shrink-0 rounded-full bg-white/5 px-2.5 py-1 text-[10px] font-black text-white/40">
-                    {item.count}
-                  </span>
-                </div>
-              ))}
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-bold text-white/80">
+                              {item.country}
+                            </p>
+
+                            <p className="mt-0.5 text-[10px] text-white/30">
+                              {item.count}{" "}
+                              {item.count === 1
+                                ? "member"
+                                : "members"}
+                            </p>
+                          </div>
+                        </div>
+
+                        <span className="shrink-0 text-xs font-black text-white/40">
+                          {percentage}%
+                        </span>
+                      </div>
+
+                      {/* ACTIVITY BAR */}
+                      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/5">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-blue-500 via-violet-500 to-pink-500 transition-all duration-700"
+                          style={{
+                            width: `${percentage}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                }
+              )}
             </div>
           )}
         </div>
@@ -302,6 +386,7 @@ function GlobalActivity() {
                   className="rounded-full border border-violet-400/10 bg-violet-500/10 px-3 py-2 text-xs font-bold text-violet-200"
                 >
                   {item.interest}
+
                   <span className="ml-1.5 text-violet-300/40">
                     {item.count}
                   </span>
@@ -310,7 +395,7 @@ function GlobalActivity() {
             </div>
           )}
         </div>
-        
+
         {/* CTA */}
         <div className="border-t border-white/10 p-5">
           <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3.5 text-center">
@@ -319,7 +404,8 @@ function GlobalActivity() {
             </p>
 
             <p className="mt-1 text-[10px] leading-5 text-white/30">
-              Discover people, communities and conversations from around the world.
+              Discover people, communities and
+              conversations from around the world.
             </p>
           </div>
         </div>
@@ -335,7 +421,7 @@ export default function DiscoverPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] =
+  const [filter, setFill] =
     useState<FilterType>("all");
 
   const [loading, setLoading] = useState(true);
