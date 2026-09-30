@@ -92,10 +92,18 @@ export default function FeedPage() {
   useEffect(() => {
     loadFeed();
   }, []);
-useEffect(() => {
+  useEffect(() => {
   const params = new URLSearchParams(
     window.location.search
   );
+
+  const postId = params.get("post");
+
+  if (postId) {
+    setHighlightedPostId(postId);
+  }
+}, []);
+
 useEffect(() => {
   if (!userId) return;
 
@@ -119,39 +127,6 @@ useEffect(() => {
 
   return () => {
     supabase.removeChannel(channel);
-  };
-}, [userId]);
-  useEffect(() => {
-  const refreshUnreadNotifications = () => {
-    if (!userId) return;
-
-    supabase
-      .from("notification")
-      .select("*", {
-        count: "exact",
-        head: true,
-      })
-      .eq("user_id", userId)
-      .eq("is_read", false)
-      .then(({ count, error }) => {
-        if (!error) {
-          setUnreadNotifications(
-            count || 0
-          );
-        }
-      });
-  };
-
-  window.addEventListener(
-    "focus",
-    refreshUnreadNotifications
-  );
-
-  return () => {
-    window.removeEventListener(
-      "focus",
-      refreshUnreadNotifications
-    );
   };
 }, [userId]);
   async function loadFeed() {
