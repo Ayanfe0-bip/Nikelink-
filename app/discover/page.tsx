@@ -1200,18 +1200,35 @@ async function toggleFollow(profileId: string) {
               </p>
             </div>
 
-            <button
-              onClick={() =>
-                router.push(
-                  "/profile"
-                )
-              }
-              className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-lg shadow-lg transition hover:bg-white/10"
-              aria-label="Open profile"
-            >
-              👤
-            </button>
-          </div>
+            <div className="flex items-center gap-2">
+  <button
+    onClick={() =>
+      router.push("/notifications")
+    }
+    aria-label="Notifications"
+    className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-lg shadow-lg transition hover:bg-white/10"
+  >
+    🔔
+
+    {unreadNotifications > 0 && (
+      <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-pink-500 px-1 text-[10px] font-black text-white shadow-lg shadow-pink-500/30">
+        {unreadNotifications > 99
+          ? "99+"
+          : unreadNotifications}
+      </span>
+    )}
+  </button>
+
+  <button
+    onClick={() =>
+      router.push("/profile")
+    }
+    className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-lg shadow-lg transition hover:bg-white/10"
+    aria-label="Open profile"
+  >
+    👤
+  </button>
+</div>
 
           {/* SEARCH */}
           <div className="mt-6 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.045] px-4 shadow-inner">
