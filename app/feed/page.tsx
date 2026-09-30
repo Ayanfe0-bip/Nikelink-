@@ -38,6 +38,8 @@ export default function FeedPage() {
   const router = useRouter();
 
   const [userId, setUserId] = useState("");
+  const [unreadNotifications, setUnreadNotifications] =
+  useState(0);
   const [highlightedPostId, setHighlightedPostId] =
   useState<string | null>(null);
   const [userName, setUserName] =
