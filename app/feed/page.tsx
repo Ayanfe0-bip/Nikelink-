@@ -8,6 +8,7 @@ type Post = {
   id: string;
   user_id: string;
   content: string;
+  image_url: string | null;
   created_at: string;
 };
 
@@ -37,24 +38,29 @@ export default function FeedPage() {
   const router = useRouter();
 
   const [userId, setUserId] = useState("");
-  const [userName, setUserName] = useState("Nikelink User");
+  const [userName, setUserName] =
+    useState("Nikelink User");
   const [avatarUrl, setAvatarUrl] = useState("");
-  const [userInterests, setUserInterests] = useState<string[]>([]);
+  const [userInterests, setUserInterests] =
+    useState<string[]>([]);
 
   const [posts, setPosts] = useState<Post[]>([]);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [likes, setLikes] = useState<Like[]>([]);
-  const [profiles, setProfiles] = useState<Record<string, Profile>>({});
+  const [comments, setComments] =
+    useState<Comment[]>([]);
+  const [likes, setLikes] =
+    useState<Like[]>([]);
 
-  const [commentText, setCommentText] = useState<
-    Record<string, string>
-  >({});
+  const [profiles, setProfiles] =
+    useState<Record<string, Profile>>({});
 
-  const [openComments, setOpenComments] = useState<
-    Record<string, boolean>
-  >({});
+  const [commentText, setCommentText] =
+    useState<Record<string, string>>({});
 
-  const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [openComments, setOpenComments] =
+    useState<Record<string, boolean>>({});
+
+  const [openMenu, setOpenMenu] =
+    useState<string | null>(null);
 
   const [submittingComment, setSubmittingComment] =
     useState<string | null>(null);
@@ -63,9 +69,21 @@ export default function FeedPage() {
     useState<string | null>(null);
 
   const [newPost, setNewPost] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [posting, setPosting] = useState(false);
-  const [message, setMessage] = useState("");
+
+  const [selectedImage, setSelectedImage] =
+    useState<File | null>(null);
+
+  const [imagePreview, setImagePreview] =
+    useState("");
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [posting, setPosting] =
+    useState(false);
+
+  const [message, setMessage] =
+    useState("");
 
   useEffect(() => {
     loadFeed();
@@ -82,17 +100,19 @@ export default function FeedPage() {
       return;
     }
 
-    const currentUserId = userData.user.id;
+    const currentUserId =
+      userData.user.id;
 
     setUserId(currentUserId);
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select(
-        "id, full_name, username, avatar_url, interests"
-      )
-      .eq("id", currentUserId)
-      .maybeSingle();
+    const { data: profile } =
+      await supabase
+        .from("profiles")
+        .select(
+          "id, full_name, username, avatar_url, interests"
+        )
+        .eq("id", currentUserId)
+        .maybeSingle();
 
     if (profile) {
       setUserName(
@@ -101,7 +121,9 @@ export default function FeedPage() {
           "Nikelink User"
       );
 
-      setAvatarUrl(profile.avatar_url || "");
+      setAvatarUrl(
+        profile.avatar_url || ""
+      );
 
       setUserInterests(
         Array.isArray(profile.interests)
@@ -120,7 +142,10 @@ export default function FeedPage() {
   }
 
   async function loadPosts() {
-    const { data, error } = await supabase
+    const {
+      data,
+      error,
+    } = await supabase
       .from("posts")
       .select("*")
       .order("created_at", {
@@ -128,7 +153,10 @@ export default function FeedPage() {
       });
 
     if (error) {
-      console.error("Posts error:", error);
+      console.error(
+        "Posts error:",
+        error
+      );
       return;
     }
 
@@ -138,11 +166,15 @@ export default function FeedPage() {
 
     const userIds = Array.from(
       new Set(
-        data.map((post) => post.user_id)
+        data.map(
+          (post) => post.user_id
+        )
       )
     );
 
-    if (userIds.length === 0) return;
+    if (userIds.length === 0) {
+      return;
+    }
 
     const {
       data: authorProfiles,
@@ -164,17 +196,26 @@ export default function FeedPage() {
 
     if (!authorProfiles) return;
 
-    const profileMap: Record<string, Profile> = {};
+    const profileMap: Record<
+      string,
+      Profile
+    > = {};
 
-    authorProfiles.forEach((profile) => {
-      profileMap[profile.id] = profile;
-    });
+    authorProfiles.forEach(
+      (profile) => {
+        profileMap[profile.id] =
+          profile;
+      }
+    );
 
     setProfiles(profileMap);
   }
 
   async function loadComments() {
-    const { data, error } = await supabase
+    const {
+      data,
+      error,
+    } = await supabase
       .from("comments")
       .select(
         "id, post_id, user_id, content, created_at"
@@ -189,7 +230,10 @@ export default function FeedPage() {
   }
 
   async function loadLikes() {
-    const { data, error } = await supabase
+    const {
+      data,
+      error,
+    } = await supabase
       .from("likes")
       .select(
         "id, post_id, user_id"
@@ -200,25 +244,114 @@ export default function FeedPage() {
     }
   }
 
+  function handleImageSelect(
+    e: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const file =
+      e.target.files?.[0];
+
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setMessage(
+        "Please select an image."
+      );
+      return;
+    }
+
+    if (
+      file.size >
+      5 * 1024 * 1024
+    ) {
+      setMessage(
+        "Image must be smaller than 5MB."
+      );
+      return;
+    }
+
+    setSelectedImage(file);
+
+    const previewUrl =
+      URL.createObjectURL(file);
+
+    setImagePreview(previewUrl);
+  }
+
   async function handleCreatePost(
     e: React.FormEvent<HTMLFormElement>
   ) {
     e.preventDefault();
 
-    if (!userId || !newPost.trim()) {
+    if (
+      !userId ||
+      (!newPost.trim() &&
+        !selectedImage)
+    ) {
       return;
     }
 
     setPosting(true);
     setMessage("");
 
-    const content = newPost.trim();
+    const content =
+      newPost.trim();
 
-    const { data, error } = await supabase
+    let imageUrl = "";
+
+    if (selectedImage) {
+      const extension =
+        selectedImage.name
+          .split(".")
+          .pop() || "jpg";
+
+      const filePath =
+        `${userId}/${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2)}.${extension}`;
+
+      const {
+        error: uploadError,
+      } = await supabase.storage
+        .from("post-media")
+        .upload(
+          filePath,
+          selectedImage,
+          {
+            cacheControl: "3600",
+            upsert: false,
+          }
+        );
+
+      if (uploadError) {
+        setMessage(
+          uploadError.message
+        );
+        setPosting(false);
+        return;
+      }
+
+      const {
+        data: publicUrlData,
+      } = supabase.storage
+        .from("post-media")
+        .getPublicUrl(
+          filePath
+        );
+
+      imageUrl =
+        publicUrlData.publicUrl;
+    }
+
+    const {
+      data,
+      error,
+    } = await supabase
       .from("posts")
       .insert({
         user_id: userId,
         content,
+        image_url:
+          imageUrl || null,
       })
       .select()
       .single();
@@ -242,52 +375,76 @@ export default function FeedPage() {
           full_name: userName,
           username: null,
           avatar_url: avatarUrl,
-          interests: userInterests,
+          interests:
+            userInterests,
         },
       }));
     }
 
     setNewPost("");
+    setSelectedImage(null);
+    setImagePreview("");
+
     setPosting(false);
-    setMessage("Post published.");
+    setMessage(
+      "Post published."
+    );
 
     setTimeout(() => {
       setMessage("");
     }, 2000);
   }
 
-  async function toggleLike(postId: string) {
+  async function toggleLike(
+    postId: string
+  ) {
     if (!userId) return;
 
-    const existingLike = likes.find(
-      (like) =>
-        like.post_id === postId &&
-        like.user_id === userId
-    );
+    const existingLike =
+      likes.find(
+        (like) =>
+          like.post_id ===
+            postId &&
+          like.user_id ===
+            userId
+      );
 
     if (existingLike) {
-      const { error } = await supabase
-        .from("likes")
-        .delete()
-        .eq("post_id", postId)
-        .eq("user_id", userId);
+      const { error } =
+        await supabase
+          .from("likes")
+          .delete()
+          .eq(
+            "post_id",
+            postId
+          )
+          .eq(
+            "user_id",
+            userId
+          );
 
       if (error) {
-        setMessage(error.message);
+        setMessage(
+          error.message
+        );
         return;
       }
 
       setLikes((current) =>
         current.filter(
           (like) =>
-            like.id !== existingLike.id
+            like.id !==
+            existingLike.id
         )
       );
 
       return;
     }
 
-    const { data, error } = await supabase
+    const {
+      data,
+      error,
+    } = await supabase
       .from("likes")
       .insert({
         post_id: postId,
@@ -299,7 +456,9 @@ export default function FeedPage() {
       .single();
 
     if (error) {
-      setMessage(error.message);
+      setMessage(
+        error.message
+      );
       return;
     }
 
@@ -315,15 +474,24 @@ export default function FeedPage() {
     postId: string
   ) {
     const content = (
-      commentText[postId] || ""
+      commentText[postId] ||
+      ""
     ).trim();
 
-    if (!content || !userId) return;
+    if (!content || !userId) {
+      return;
+    }
 
-    setSubmittingComment(postId);
+    setSubmittingComment(
+      postId
+    );
+
     setMessage("");
 
-    const { data, error } = await supabase
+    const {
+      data,
+      error,
+    } = await supabase
       .from("comments")
       .insert({
         post_id: postId,
@@ -336,8 +504,14 @@ export default function FeedPage() {
       .single();
 
     if (error) {
-      setMessage(error.message);
-      setSubmittingComment(null);
+      setMessage(
+        error.message
+      );
+
+      setSubmittingComment(
+        null
+      );
+
       return;
     }
 
@@ -348,20 +522,28 @@ export default function FeedPage() {
       ]);
     }
 
-    setCommentText((current) => ({
-      ...current,
-      [postId]: "",
-    }));
+    setCommentText(
+      (current) => ({
+        ...current,
+        [postId]: "",
+      })
+    );
 
-    setOpenComments((current) => ({
-      ...current,
-      [postId]: true,
-    }));
+    setOpenComments(
+      (current) => ({
+        ...current,
+        [postId]: true,
+      })
+    );
 
-    setSubmittingComment(null);
+    setSubmittingComment(
+      null
+    );
   }
 
-  async function handleShare(post: Post) {
+  async function handleShare(
+    post: Post
+  ) {
     const shareUrl =
       `${window.location.origin}/feed?post=${post.id}`;
 
@@ -369,7 +551,10 @@ export default function FeedPage() {
       if (navigator.share) {
         await navigator.share({
           title: "Nikelink",
-          text: post.content.slice(0, 120),
+          text: post.content.slice(
+            0,
+            120
+          ),
           url: shareUrl,
         });
 
@@ -380,7 +565,9 @@ export default function FeedPage() {
         shareUrl
       );
 
-      setMessage("Post link copied.");
+      setMessage(
+        "Post link copied."
+      );
 
       setTimeout(() => {
         setMessage("");
@@ -396,9 +583,10 @@ export default function FeedPage() {
   async function handleDeletePost(
     postId: string
   ) {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this post?"
-    );
+    const confirmed =
+      window.confirm(
+        "Are you sure you want to delete this post?"
+      );
 
     if (!confirmed) {
       setOpenMenu(null);
@@ -408,41 +596,92 @@ export default function FeedPage() {
     setDeletingPost(postId);
     setMessage("");
 
-    const { error } = await supabase
-      .from("posts")
-      .delete()
-      .eq("id", postId)
-      .eq("user_id", userId);
+    const post =
+      posts.find(
+        (item) =>
+          item.id === postId
+      );
+
+    const { error } =
+      await supabase
+        .from("posts")
+        .delete()
+        .eq("id", postId)
+        .eq(
+          "user_id",
+          userId
+        );
 
     if (error) {
-      setMessage(error.message);
+      setMessage(
+        error.message
+      );
       setDeletingPost(null);
       return;
     }
 
+    if (post?.image_url) {
+      try {
+        const marker =
+          "/post-media/";
+
+        const index =
+          post.image_url.indexOf(
+            marker
+          );
+
+        if (index !== -1) {
+          const filePath =
+            post.image_url.slice(
+              index +
+                marker.length
+            );
+
+          await supabase.storage
+            .from(
+              "post-media"
+            )
+            .remove([
+              filePath,
+            ]);
+        }
+      } catch (storageError) {
+        console.log(
+          "Image cleanup error:",
+          storageError
+        );
+      }
+    }
+
     setPosts((current) =>
       current.filter(
-        (post) => post.id !== postId
+        (item) =>
+          item.id !== postId
       )
     );
 
     setComments((current) =>
       current.filter(
         (comment) =>
-          comment.post_id !== postId
+          comment.post_id !==
+          postId
       )
     );
 
     setLikes((current) =>
       current.filter(
         (like) =>
-          like.post_id !== postId
+          like.post_id !==
+          postId
       )
     );
 
     setOpenMenu(null);
     setDeletingPost(null);
-    setMessage("Post deleted.");
+
+    setMessage(
+      "Post deleted."
+    );
 
     setTimeout(() => {
       setMessage("");
@@ -453,7 +692,10 @@ export default function FeedPage() {
     postId: string
   ) {
     setOpenMenu(null);
-    setMessage("Post reported.");
+
+    setMessage(
+      "Post reported."
+    );
 
     console.log(
       "Reported post:",
@@ -465,15 +707,21 @@ export default function FeedPage() {
     }, 2000);
   }
 
-  function formatDate(date: string) {
-    const created = new Date(date);
-    const now = new Date();
+  function formatDate(
+    date: string
+  ) {
+    const created =
+      new Date(date);
 
-    const difference = Math.floor(
-      (now.getTime() -
-        created.getTime()) /
-        1000
-    );
+    const now =
+      new Date();
+
+    const difference =
+      Math.floor(
+        (now.getTime() -
+          created.getTime()) /
+          1000
+      );
 
     if (difference < 60) {
       return "Just now";
@@ -514,22 +762,30 @@ export default function FeedPage() {
   ) {
     return comments.filter(
       (comment) =>
-        comment.post_id === postId
+        comment.post_id ===
+        postId
     );
   }
 
-  function getAuthor(post: Post) {
-    if (post.user_id === userId) {
+  function getAuthor(
+    post: Post
+  ) {
+    if (
+      post.user_id ===
+      userId
+    ) {
       return {
         full_name: userName,
         username: null,
-        avatar_url: avatarUrl,
+        avatar_url:
+          avatarUrl,
       };
     }
 
     return (
       profiles[post.user_id] || {
-        full_name: "Nikelink User",
+        full_name:
+          "Nikelink User",
         username: null,
         avatar_url: null,
       }
@@ -539,26 +795,38 @@ export default function FeedPage() {
   function getPersonalizationScore(
     post: Post
   ) {
-    const author = profiles[post.user_id];
+    const author =
+      profiles[post.user_id];
 
-    if (!author?.interests?.length) {
+    if (
+      !author?.interests
+        ?.length
+    ) {
       return 0;
     }
 
-    if (!userInterests.length) {
+    if (
+      !userInterests.length
+    ) {
       return 0;
     }
 
-    const userInterestSet = new Set(
-      userInterests.map((interest) =>
-        interest.toLowerCase().trim()
-      )
-    );
+    const userInterestSet =
+      new Set(
+        userInterests.map(
+          (interest) =>
+            interest
+              .toLowerCase()
+              .trim()
+        )
+      );
 
     return author.interests.filter(
       (interest) =>
         userInterestSet.has(
-          interest.toLowerCase().trim()
+          interest
+            .toLowerCase()
+            .trim()
         )
     ).length;
   }
@@ -581,9 +849,11 @@ export default function FeedPage() {
 
   return (
     <main className="min-h-screen bg-[#050816] pb-24 text-white">
+
       {/* TOP NAV */}
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#050816]/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
+
           <button
             onClick={() =>
               router.push("/feed")
@@ -596,6 +866,7 @@ export default function FeedPage() {
           </button>
 
           <div className="flex items-center gap-2">
+
             <button
               onClick={() =>
                 router.push(
@@ -610,7 +881,9 @@ export default function FeedPage() {
 
             <button
               onClick={() =>
-                router.push("/profile")
+                router.push(
+                  "/profile"
+                )
               }
               aria-label="Profile"
               className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-blue-500 to-violet-600 font-bold shadow-lg shadow-blue-500/20"
@@ -627,11 +900,13 @@ export default function FeedPage() {
                   .toUpperCase()
               )}
             </button>
+
           </div>
         </div>
       </header>
 
       <div className="mx-auto max-w-3xl px-4 pt-6">
+
         {/* WELCOME */}
         <div className="mb-6">
           <p className="text-sm text-white/40">
@@ -647,10 +922,13 @@ export default function FeedPage() {
           </p>
         </div>
 
-        {/* PERSONALIZED FEED INFO */}
-        {userInterests.length > 0 && (
+        {/* PERSONALIZED FEED */}
+        {userInterests.length >
+          0 && (
           <div className="mb-5 rounded-2xl border border-violet-500/15 bg-violet-500/[0.06] px-4 py-3">
+
             <div className="flex items-center gap-3">
+
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-blue-500">
                 ✨
               </div>
@@ -664,17 +942,23 @@ export default function FeedPage() {
                   Based on your interests
                 </p>
               </div>
+
             </div>
           </div>
         )}
 
         {/* CREATE POST */}
         <form
-          onSubmit={handleCreatePost}
+          onSubmit={
+            handleCreatePost
+          }
           className="mb-6 rounded-3xl border border-white/10 bg-white/[0.04] p-4 shadow-2xl shadow-black/20"
         >
+
           <div className="flex gap-3">
+
             <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-blue-500 to-violet-600 font-bold">
+
               {avatarUrl ? (
                 <img
                   src={avatarUrl}
@@ -688,21 +972,81 @@ export default function FeedPage() {
                     .toUpperCase()}
                 </div>
               )}
+
             </div>
 
             <textarea
               value={newPost}
               onChange={(e) =>
-                setNewPost(e.target.value)
+                setNewPost(
+                  e.target.value
+                )
               }
               placeholder="What's happening?"
               rows={3}
               maxLength={2000}
               className="min-h-[80px] flex-1 resize-none rounded-2xl border border-white/10 bg-black/20 p-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-blue-500/50"
             />
+
           </div>
 
+          {/* IMAGE PREVIEW */}
+          {imagePreview && (
+            <div className="relative mt-4 overflow-hidden rounded-2xl border border-white/10">
+
+              <img
+                src={imagePreview}
+                alt="Selected image"
+                className="max-h-80 w-full object-cover"
+              />
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedImage(
+                    null
+                  );
+
+                  setImagePreview(
+                    ""
+                  );
+                }}
+                className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/70 text-white"
+                aria-label="Remove image"
+              >
+                ✕
+              </button>
+
+            </div>
+          )}
+
+                    {/* IMAGE PICKER */}
+          <div className="mt-3 flex items-center gap-2">
+
+            <label className="cursor-pointer rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-white/60 transition hover:bg-white/10 hover:text-white">
+
+              📷 Add image
+
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageSelect}
+                className="hidden"
+              />
+
+            </label>
+
+            {selectedImage && (
+              <span className="max-w-[180px] truncate text-xs text-white/30">
+                {selectedImage.name}
+              </span>
+            )}
+
+          </div>
+
+          {/* POST BUTTON */}
           <div className="mt-3 flex items-center justify-between gap-3">
+
             <span className="text-xs text-white/30">
               Share something with the community
             </span>
@@ -711,7 +1055,8 @@ export default function FeedPage() {
               type="submit"
               disabled={
                 posting ||
-                !newPost.trim()
+                (!newPost.trim() &&
+                  !selectedImage)
               }
               className="shrink-0 rounded-full bg-gradient-to-r from-blue-500 to-violet-600 px-5 py-2 text-sm font-bold shadow-lg shadow-blue-500/20 transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40"
             >
@@ -719,7 +1064,9 @@ export default function FeedPage() {
                 ? "Posting..."
                 : "Post"}
             </button>
+
           </div>
+
         </form>
 
         {/* MESSAGE */}
@@ -731,8 +1078,10 @@ export default function FeedPage() {
 
         {/* POSTS */}
         <div className="space-y-5">
+
           {posts.length === 0 ? (
             <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-10 text-center">
+
               <div className="mb-3 text-4xl">
                 🌍
               </div>
@@ -742,13 +1091,14 @@ export default function FeedPage() {
               </h2>
 
               <p className="mt-2 text-sm text-white/40">
-                Be the first to share
-                something.
+                Be the first to share something.
               </p>
+
             </div>
           ) : (
             [...posts]
               .sort((a, b) => {
+
                 const scoreA =
                   getPersonalizationScore(a);
 
@@ -769,24 +1119,21 @@ export default function FeedPage() {
                 );
               })
               .map((post) => {
+
                 const postLikes =
                   getPostLikes(post.id);
 
                 const postComments =
-                  getPostComments(
-                    post.id
-                  );
+                  getPostComments(post.id);
 
                 const userLiked =
                   postLikes.some(
                     (like) =>
-                      like.user_id ===
-                      userId
+                      like.user_id === userId
                   );
 
                 const isOwnPost =
-                  post.user_id ===
-                  userId;
+                  post.user_id === userId;
 
                 const author =
                   getAuthor(post);
@@ -796,395 +1143,470 @@ export default function FeedPage() {
                     key={post.id}
                     className="relative overflow-visible rounded-3xl border border-white/10 bg-white/[0.04] shadow-xl shadow-black/20"
                   >
+
                     {/* POST HEADER */}
-<div className="flex items-center justify-between p-4">
-  <div className="flex items-center gap-3">
-    <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-blue-500 via-violet-500 to-pink-500 font-bold">
-      {author.avatar_url ? (
-        <img
-          src={author.avatar_url}
-          alt={
-            author.full_name ||
-            author.username ||
-            "Nikelink User"
-          }
-          className="h-full w-full object-cover"
-        />
-      ) : (
-        <div className="flex h-full w-full items-center justify-center">
-          {(
-            author.full_name ||
-            author.username ||
-            "N"
-          )
-            .charAt(0)
-            .toUpperCase()}
+                    <div className="flex items-center justify-between p-4">
+
+                      <div className="flex items-center gap-3">
+
+                        <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-blue-500 via-violet-500 to-pink-500 font-bold">
+
+                          {author.avatar_url ? (
+                            <img
+                              src={author.avatar_url}
+                              alt={
+                                author.full_name ||
+                                author.username ||
+                                "Nikelink User"
+                              }
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center">
+                              {(
+                                author.full_name ||
+                                author.username ||
+                                "N"
+                              )
+                                .charAt(0)
+                                .toUpperCase()}
+                            </div>
+                          )}
+
+                        </div>
+
+                        <div>
+
+                          <p className="text-sm font-semibold">
+                            {author.full_name ||
+                              author.username ||
+                              "Nikelink User"}
+                          </p>
+
+                          {author.username && (
+                            <p className="text-xs text-white/30">
+                              @{author.username}
+                            </p>
+                          )}
+
+                          <p className="text-xs text-white/35">
+                            {formatDate(
+                              post.created_at
+                            )}
+                          </p>
+
+                        </div>
+
+                      </div>
+
+                      {/* THREE DOT MENU */}
+                      <div className="relative">
+
+                        <button
+                          onClick={() =>
+                            setOpenMenu(
+                              openMenu === post.id
+                                ? null
+                                : post.id
+                            )
+                          }
+                          aria-label="Post menu"
+                          className="flex h-9 w-9 items-center justify-center rounded-full text-xl text-white/50 transition hover:bg-white/10 hover:text-white"
+                        >
+                          ⋯
+                        </button>
+
+                        {openMenu === post.id && (
+                          <div className="absolute right-0 top-11 z-30 w-48 overflow-hidden rounded-2xl border border-white/10 bg-[#101426] shadow-2xl shadow-black/50">
+
+                            <button
+                              onClick={() => {
+                                setOpenMenu(null);
+                                handleShare(post);
+                              }}
+                              className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition hover:bg-white/10"
+                            >
+                              <span>↗️</span>
+
+                              <span>
+                                Share post
+                              </span>
+                            </button>
+
+                            {isOwnPost ? (
+                              <button
+                                onClick={() =>
+                                  handleDeletePost(
+                                    post.id
+                                  )
+                                }
+                                disabled={
+                                  deletingPost ===
+                                  post.id
+                                }
+                                className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-red-400 transition hover:bg-red-500/10"
+                              >
+                                <span>🗑️</span>
+
+                                <span>
+                                  {deletingPost ===
+                                  post.id
+                                    ? "Deleting..."
+                                    : "Delete post"}
+                                </span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() =>
+                                  handleReportPost(
+                                    post.id
+                                  )
+                                }
+                                className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition hover:bg-white/10"
+                              >
+                                <span>⚑</span>
+
+                                <span>
+                                  Report post
+                                </span>
+                              </button>
+                            )}
+
+                          </div>
+                        )}
+
+                      </div>
+
+                    </div>
+
+                    {/* POST CONTENT */}
+                    <div className="px-4 pb-4">
+
+                      {post.content && (
+                        <p className="whitespace-pre-wrap text-[15px] leading-7 text-white/90">
+                          {post.content}
+                        </p>
+                      )}
+
+                      {/* POST IMAGE */}
+                      {post.image_url && (
+                        <div
+                          className={`overflow-hidden rounded-2xl ${
+                            post.content
+                              ? "mt-4"
+                              : ""
+                          }`}
+                        >
+                          <img
+                            src={post.image_url}
+                            alt="Post image"
+                            className="max-h-[520px] w-full object-cover"
+                            loading="lazy"
+                          />
+                        </div>
+                      )}
+
+                    </div>
+
+                    {/* ACTIONS */}
+                    <div className="border-t border-white/10 px-3 py-2">
+
+                      <div className="flex items-center justify-between">
+
+                        <div className="flex items-center gap-1">
+
+                          {/* LIKE */}
+                          <button
+                            onClick={() =>
+                              toggleLike(post.id)
+                            }
+                            className={`flex items-center gap-2 rounded-full px-3 py-2 text-sm transition ${
+                              userLiked
+                                ? "bg-pink-500/10 text-pink-400"
+                                : "text-white/50 hover:bg-white/5 hover:text-pink-400"
+                            }`}
+                          >
+                            <span className="text-lg">
+                              {userLiked
+                                ? "❤️"
+                                : "♡"}
+                            </span>
+
+                            <span>
+                              {postLikes.length}
+                            </span>
+                          </button>
+
+                          {/* COMMENTS */}
+                          <button
+                            onClick={() =>
+                              setOpenComments(
+                                (current) => ({
+                                  ...current,
+                                  [post.id]:
+                                    !current[
+                                      post.id
+                                    ],
+                                })
+                              )
+                            }
+                            className="flex items-center gap-2 rounded-full px-3 py-2 text-sm text-white/50 transition hover:bg-white/5 hover:text-blue-400"
+                          >
+                            <span className="text-lg">
+                              💬
+                            </span>
+
+                            <span>
+                              {postComments.length}
+                            </span>
+                          </button>
+
+                          {/* SHARE */}
+                          <button
+                            onClick={() =>
+                              handleShare(post)
+                            }
+                            className="flex items-center gap-2 rounded-full px-3 py-2 text-sm text-white/50 transition hover:bg-white/5 hover:text-violet-400"
+                          >
+                            <span className="text-lg">
+                              ↗
+                            </span>
+
+                            <span className="hidden sm:inline">
+                              Share
+                            </span>
+                          </button>
+
+                        </div>
+
+                      </div>
+
+                    </div>
+
+                    {/* COMMENTS */}
+                    {openComments[post.id] && (
+                      <div className="border-t border-white/10 px-4 pb-4 pt-3">
+
+                        <div className="space-y-3">
+
+                          {postComments.length === 0 ? (
+                            <p className="py-2 text-center text-xs text-white/30">
+                              No comments yet.
+                            </p>
+                          ) : (
+                            postComments.map(
+                              (comment) => (
+                                <div
+                                  key={comment.id}
+                                  className="flex gap-3"
+                                >
+
+                                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 text-xs font-bold">
+                                    N
+                                  </div>
+
+                                  <div className="min-w-0 flex-1 rounded-2xl bg-white/[0.05] px-3 py-2">
+
+                                    <p className="text-xs font-semibold text-white">
+                                      Nikelink User
+                                    </p>
+
+                                    <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-white/75">
+                                      {comment.content}
+                                    </p>
+
+                                    <p className="mt-1 text-[10px] text-white/25">
+                                      {formatDate(
+                                        comment.created_at
+                                      )}
+                                    </p>
+
+                                  </div>
+
+                                </div>
+                              )
+                            )
+                          )}
+
+                        </div>
+
+                        {/* COMMENT INPUT */}
+                        <div className="mt-4 flex gap-2">
+
+                          <input
+                            value={
+                              commentText[
+                                post.id
+                              ] || ""
+                            }
+                            onChange={(e) =>
+                              setCommentText(
+                                (current) => ({
+                                  ...current,
+                                  [post.id]:
+                                    e.target.value,
+                                })
+                              )
+                            }
+                            onKeyDown={(e) => {
+                              if (
+                                e.key === "Enter" &&
+                                !e.shiftKey
+                              ) {
+                                e.preventDefault();
+
+                                if (
+                                  (
+                                    commentText[
+                                      post.id
+                                    ] || ""
+                                  ).trim()
+                                ) {
+                                  submitComment(
+                                    post.id
+                                  );
+                                }
+                              }
+                            }}
+                            placeholder="Write a comment..."
+                            maxLength={500}
+                            className="min-w-0 flex-1 rounded-full border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-blue-500/40"
+                          />
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              submitComment(
+                                post.id
+                              )
+                            }
+                            disabled={
+                              submittingComment ===
+                                post.id ||
+                              !(
+                                commentText[
+                                  post.id
+                                ] || ""
+                              ).trim()
+                            }
+                            className="rounded-full bg-blue-600 px-4 py-2 text-sm font-bold transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-30"
+                          >
+                            {submittingComment ===
+                            post.id
+                              ? "..."
+                              : "Send"}
+                          </button>
+
+                        </div>
+
+                      </div>
+                    )}
+
+                  </article>
+                );
+              })
+          )}
+
         </div>
-      )}
-    </div>
+      </div>
 
-    <div>
-      <p className="text-sm font-semibold">
-        {author.full_name ||
-          author.username ||
-          "Nikelink User"}
-      </p>
+      {/* MOBILE NAVIGATION */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#050816]/95 backdrop-blur-xl">
 
-      {author.username && (
-        <p className="text-xs text-white/30">
-          @{author.username}
-        </p>
-      )}
+        <div className="mx-auto flex max-w-3xl items-center justify-around px-2 py-2">
 
-      <p className="text-xs text-white/35">
-        {formatDate(post.created_at)}
-      </p>
-    </div>
-  </div>
-
-  {/* THREE DOT MENU */}
-  <div className="relative">
-    <button
-      onClick={() =>
-        setOpenMenu(
-          openMenu === post.id
-            ? null
-            : post.id
-        )
-      }
-      aria-label="Post menu"
-      className="flex h-9 w-9 items-center justify-center rounded-full text-xl text-white/50 transition hover:bg-white/10 hover:text-white"
-    >
-      ⋯
-    </button>
-
-    {openMenu === post.id && (
-      <div className="absolute right-0 top-11 z-30 w-48 overflow-hidden rounded-2xl border border-white/10 bg-[#101426] shadow-2xl shadow-black/50">
-        <button
-          onClick={() => {
-            setOpenMenu(null);
-            handleShare(post);
-          }}
-          className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition hover:bg-white/10"
-        >
-          <span>↗️</span>
-          <span>Share post</span>
-        </button>
-
-        {isOwnPost ? (
+          {/* HOME */}
           <button
             onClick={() =>
-              handleDeletePost(post.id)
+              router.push("/feed")
             }
-            disabled={
-              deletingPost === post.id
-            }
-            className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-red-400 transition hover:bg-red-500/10"
+            className="flex min-w-[60px] flex-col items-center gap-1 px-3 py-2 text-blue-400"
           >
-            <span>🗑️</span>
+            <span className="text-xl">
+              🏠
+            </span>
 
-            <span>
-              {deletingPost === post.id
-                ? "Deleting..."
-                : "Delete post"}
+            <span className="text-[10px] font-medium">
+              Home
             </span>
           </button>
-        ) : (
+
+          {/* DISCOVER */}
           <button
             onClick={() =>
-              handleReportPost(post.id)
+              router.push("/discover")
             }
-            className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition hover:bg-white/10"
+            className="flex min-w-[60px] flex-col items-center gap-1 px-3 py-2 text-white/40 transition hover:text-white"
           >
-            <span>⚑</span>
-            <span>Report post</span>
+            <span className="text-xl">
+              🔎
+            </span>
+
+            <span className="text-[10px] font-medium">
+              Discover
+            </span>
           </button>
-        )}
-      </div>
-    )}
-  </div>
-</div>
 
-{/* POST CONTENT */}
-<div className="px-4 pb-4">
-  <p className="whitespace-pre-wrap text-[15px] leading-7 text-white/90">
-    {post.content}
-  </p>
-</div>
+          {/* CREATE */}
+          <button
+            onClick={() => {
+              const textarea =
+                document.querySelector(
+                  "textarea"
+                ) as HTMLTextAreaElement | null;
 
-{/* ACTIONS */}
-<div className="border-t border-white/10 px-3 py-2">
-  <div className="flex items-center justify-between">
-    <div className="flex items-center gap-1">
+              if (textarea) {
+                textarea.scrollIntoView({
+                  behavior: "smooth",
+                  block: "center",
+                });
 
-      {/* LIKE */}
-      <button
-        onClick={() =>
-          toggleLike(post.id)
-        }
-        className={`flex items-center gap-2 rounded-full px-3 py-2 text-sm transition ${
-          userLiked
-            ? "bg-pink-500/10 text-pink-400"
-            : "text-white/50 hover:bg-white/5 hover:text-pink-400"
-        }`}
-      >
-        <span className="text-lg">
-          {userLiked ? "❤️" : "♡"}
-        </span>
-
-        <span>
-          {postLikes.length}
-        </span>
-      </button>
-
-      {/* COMMENTS */}
-      <button
-        onClick={() =>
-          setOpenComments(
-            (current) => ({
-              ...current,
-              [post.id]:
-                !current[post.id],
-            })
-          )
-        }
-        className="flex items-center gap-2 rounded-full px-3 py-2 text-sm text-white/50 transition hover:bg-white/5 hover:text-blue-400"
-      >
-        <span className="text-lg">
-          💬
-        </span>
-
-        <span>
-          {postComments.length}
-        </span>
-      </button>
-
-      {/* SHARE */}
-      <button
-        onClick={() =>
-          handleShare(post)
-        }
-        className="flex items-center gap-2 rounded-full px-3 py-2 text-sm text-white/50 transition hover:bg-white/5 hover:text-violet-400"
-      >
-        <span className="text-lg">
-          ↗
-        </span>
-
-        <span className="hidden sm:inline">
-          Share
-        </span>
-      </button>
-    </div>
-  </div>
-</div>
-
-{/* COMMENTS */}
-{openComments[post.id] && (
-  <div className="border-t border-white/10 px-4 pb-4 pt-3">
-
-    <div className="space-y-3">
-      {postComments.length === 0 ? (
-        <p className="py-2 text-center text-xs text-white/30">
-          No comments yet.
-        </p>
-      ) : (
-        postComments.map((comment) => (
-          <div
-            key={comment.id}
-            className="flex gap-3"
+                setTimeout(() => {
+                  textarea.focus();
+                }, 400);
+              }
+            }}
+            aria-label="Create post"
+            className="flex h-12 w-12 -translate-y-3 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 text-2xl font-bold shadow-xl shadow-blue-500/30 transition hover:scale-105"
           >
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 text-xs font-bold">
-              N
-            </div>
+            +
+          </button>
 
-            <div className="min-w-0 flex-1 rounded-2xl bg-white/[0.05] px-3 py-2">
-              <p className="text-xs font-semibold text-white">
-                Nikelink User
-              </p>
-
-              <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-white/75">
-                {comment.content}
-              </p>
-
-              <p className="mt-1 text-[10px] text-white/25">
-                {formatDate(
-                  comment.created_at
-                )}
-              </p>
-            </div>
-          </div>
-        ))
-      )}
-    </div>
-
-    {/* COMMENT INPUT */}
-    <div className="mt-4 flex gap-2">
-      <input
-        value={
-          commentText[post.id] || ""
-        }
-        onChange={(e) =>
-          setCommentText(
-            (current) => ({
-              ...current,
-              [post.id]:
-                e.target.value,
-            })
-          )
-        }
-        onKeyDown={(e) => {
-          if (
-            e.key === "Enter" &&
-            !e.shiftKey
-          ) {
-            e.preventDefault();
-
-            if (
-              (
-                commentText[
-                  post.id
-                ] || ""
-              ).trim()
-            ) {
-              submitComment(
-                post.id
-              );
-            }
-          }
-        }}
-        placeholder="Write a comment..."
-        maxLength={500}
-        className="min-w-0 flex-1 rounded-full border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-blue-500/40"
-      />
-
+                {/* NOTIFICATIONS */}
       <button
-        type="button"
         onClick={() =>
-          submitComment(post.id)
+          router.push("/notifications")
         }
-        disabled={
-          submittingComment ===
-            post.id ||
-          !(
-            commentText[
-              post.id
-            ] || ""
-          ).trim()
-        }
-        className="rounded-full bg-blue-600 px-4 py-2 text-sm font-bold transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-30"
+        className="flex min-w-[60px] flex-col items-center gap-1 px-3 py-2 text-white/40 transition hover:text-white"
       >
-        {submittingComment ===
-        post.id
-          ? "..."
-          : "Send"}
+        <span className="text-xl">
+          🔔
+        </span>
+
+        <span className="text-[10px] font-medium">
+          Alerts
+        </span>
       </button>
-    </div>
-  </div>
-)}
-</article>
-);
-})
-)}
-</div>
-</div>
 
-{/* MOBILE NAVIGATION */}
-<nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#050816]/95 backdrop-blur-xl">
-  <div className="mx-auto flex max-w-3xl items-center justify-around px-2 py-2">
-
-    {/* HOME */}
-    <button
-      onClick={() =>
-        router.push("/feed")
-      }
-      className="flex min-w-[60px] flex-col items-center gap-1 px-3 py-2 text-blue-400"
-    >
-      <span className="text-xl">
-        🏠
-      </span>
-
-      <span className="text-[10px] font-medium">
-        Home
-      </span>
-    </button>
-
-    {/* DISCOVER */}
-    <button
-      onClick={() =>
-        router.push("/discover")
-      }
-      className="flex min-w-[60px] flex-col items-center gap-1 px-3 py-2 text-white/40 transition hover:text-white"
-    >
-      <span className="text-xl">
-        🔎
-      </span>
-
-      <span className="text-[10px] font-medium">
-        Discover
-      </span>
-    </button>
-
-    {/* CREATE */}
-    <button
-      onClick={() => {
-        const textarea =
-          document.querySelector(
-            "textarea"
-          ) as HTMLTextAreaElement | null;
-
-        if (textarea) {
-          textarea.scrollIntoView({
-            behavior: "smooth",
-            block: "center",
-          });
-
-          setTimeout(() => {
-            textarea.focus();
-          }, 400);
+      {/* PROFILE */}
+      <button
+        onClick={() =>
+          router.push("/profile")
         }
-      }}
-      aria-label="Create post"
-      className="flex h-12 w-12 -translate-y-3 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 text-2xl font-bold shadow-xl shadow-blue-500/30 transition hover:scale-105"
-    >
-      +
-    </button>
+        className="flex min-w-[60px] flex-col items-center gap-1 px-3 py-2 text-white/40 transition hover:text-white"
+      >
+        <span className="text-xl">
+          👤
+        </span>
 
-    {/* NOTIFICATIONS */}
-    <button
-      onClick={() =>
-        router.push(
-          "/notifications"
-        )
-      }
-      className="flex min-w-[60px] flex-col items-center gap-1 px-3 py-2 text-white/40 transition hover:text-white"
-    >
-      <span className="text-xl">
-        🔔
-      </span>
+        <span className="text-[10px] font-medium">
+          Profile
+        </span>
+      </button>
 
-      <span className="text-[10px] font-medium">
-        Alerts
-      </span>
-    </button>
+    </div>
+  </nav>
 
-    {/* PROFILE */}
-    <button
-      onClick={() =>
-        router.push("/profile")
-      }
-      className="flex min-w-[60px] flex-col items-center gap-1 px-3 py-2 text-white/40 transition hover:text-white"
-    >
-      <span className="text-xl">
-        👤
-      </span>
-
-      <span className="text-[10px] font-medium">
-        Profile
-      </span>
-    </button>
-
-  </div>
-</nav>
 </main>
 );
 }
