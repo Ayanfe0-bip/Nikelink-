@@ -121,12 +121,6 @@ useEffect(() => {
     supabase.removeChannel(channel);
   };
 }, [userId]);
-  const postId = params.get("post");
-
-  if (postId) {
-    setHighlightedPostId(postId);
-  }
-}, []);
   useEffect(() => {
   const refreshUnreadNotifications = () => {
     if (!userId) return;
