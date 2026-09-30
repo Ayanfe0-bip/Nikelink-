@@ -420,6 +420,9 @@ export default function DiscoverPage() {
   const [userId, setUserId] = useState("");
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
+  const [follows, setFollows] = useState<
+  { id: string; follower_id: string; following_id: string }[]
+>([]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] =
     useState<FilterType>("all");
@@ -496,7 +499,19 @@ export default function DiscoverPage() {
         (connectionData || []) as Connection[]
       );
     }
+const { data: followData, error: followError } =
+  await supabase
+    .from("follows")
+    .select("id, follower_id, following_id")
+    .or(
+      `follower_id.eq.${user.id},following_id.eq.${user.id}`
+    );
 
+if (followError) {
+  console.error("Follow error:", followError);
+} else {
+  setFollows(followData || []);
+}
     setLoading(false);
   }
 
@@ -509,7 +524,74 @@ export default function DiscoverPage() {
           connection.requester_id === profileId)
     );
   }
+function isFollowing(profileId: string) {
+  return follows.some(
+    (follow) =>
+      follow.follower_id === userId &&
+      follow.following_id === profileId
+  );
+}
 
+async function toggleFollow(profileId: string) {
+  if (!userId || actionId) return;
+
+  setActionId(`follow-${profileId}`);
+  setErrorMessage("");
+
+  const existingFollow = follows.find(
+    (follow) =>
+      follow.follower_id === userId &&
+      follow.following_id === profileId
+  );
+
+  if (existingFollow) {
+    const { error } = await supabase
+      .from("follows")
+      .delete()
+      .eq("id", existingFollow.id);
+
+    if (error) {
+      console.error("Unfollow error:", error);
+      setErrorMessage(error.message);
+      setActionId(null);
+      return;
+    }
+
+    setFollows((current) =>
+      current.filter(
+        (follow) =>
+          follow.id !== existingFollow.id
+      )
+    );
+  } else {
+    const { data, error } = await supabase
+      .from("follows")
+      .insert({
+        follower_id: userId,
+        following_id: profileId,
+      })
+      .select(
+        "id, follower_id, following_id"
+      )
+      .single();
+
+    if (error) {
+      console.error("Follow error:", error);
+      setErrorMessage(error.message);
+      setActionId(null);
+      return;
+    }
+
+    if (data) {
+      setFollows((current) => [
+        ...current,
+        data,
+      ]);
+    }
+  }
+
+  setActionId(null);
+}
   function getButtonState(profileId: string) {
     const connection =
       getConnection(profileId);
@@ -1730,7 +1812,28 @@ export default function DiscoverPage() {
                       >
                         View profile
                       </button>
-
+<div className="mb-2">
+  <button
+    disabled={
+      actionId === `follow-${profile.id}`
+    }
+    onClick={() =>
+      toggleFollow(profile.id)
+    }
+    className={`w-full rounded-xl py-3 text-sm font-black transition ${
+      isFollowing(profile.id)
+        ? "border border-violet-500/20 bg-violet-500/10 text-violet-300"
+        : "border border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+    }`}
+  >
+    {actionId ===
+    `follow-${profile.id}`
+      ? "..."
+      : isFollowing(profile.id)
+        ? "✓ Following"
+        : "Follow"}
+  </button>
+</div>
                       {state ===
                         "connect" && (
                         <button
