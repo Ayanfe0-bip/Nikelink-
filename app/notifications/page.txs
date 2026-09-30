@@ -58,7 +58,9 @@ function formatTime(dateString: string) {
   const date = new Date(dateString);
   const now = new Date();
 
-  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  const seconds = Math.floor(
+    (now.getTime() - date.getTime()) / 1000
+  );
 
   if (seconds < 60) {
     return "Just now";
@@ -94,32 +96,44 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<
     NotificationWithActor[]
   >([]);
+
   const [loading, setLoading] = useState(true);
   const [markingAll, setMarkingAll] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
 
-  async function loadNotifications(currentUserId: string) {
+  async function loadNotifications(
+    currentUserId: string
+  ) {
     setLoading(true);
 
     const { data, error } = await supabase
       .from("notification")
       .select("*")
       .eq("user_id", currentUserId)
-      .order("created_at", { ascending: false });
+      .order("created_at", {
+        ascending: false,
+      });
 
     if (error) {
-      console.error("Notification loading error:", error);
+      console.error(
+        "Notification loading error:",
+        error
+      );
+
       setNotifications([]);
       setLoading(false);
       return;
     }
 
-    const notificationRows = (data || []) as Notification[];
+    const notificationRows =
+      (data || []) as Notification[];
 
     const actorIds = Array.from(
       new Set(
         notificationRows
-          .map((item) => item.actor_id)
+          .map(
+            (item) => item.actor_id
+          )
           .filter(Boolean) as string[]
       )
     );
@@ -127,32 +141,46 @@ export default function NotificationsPage() {
     let actors: Profile[] = [];
 
     if (actorIds.length > 0) {
-      const { data: profileData, error: profileError } = await supabase
+      const {
+        data: profileData,
+        error: profileError,
+      } = await supabase
         .from("profile")
-        .select("id, full_name, username, avatar_url")
+        .select(
+          "id, full_name, username, avatar_url"
+        )
         .in("id", actorIds);
 
       if (profileError) {
-        console.error("Actor profile loading error:", profileError);
+        console.error(
+          "Actor profile loading error:",
+          profileError
+        );
       } else {
-        actors = (profileData || []) as Profile[];
+        actors =
+          (profileData || []) as Profile[];
       }
     }
 
-    const actorMap = new Map<string, Profile>();
+    const actorMap =
+      new Map<string, Profile>();
 
     actors.forEach((actor) => {
       actorMap.set(actor.id, actor);
     });
 
-    const combined: NotificationWithActor[] = notificationRows.map(
-      (notification) => ({
-        ...notification,
-        actor: notification.actor_id
-          ? actorMap.get(notification.actor_id) || null
-          : null,
-      })
-    );
+    const combined: NotificationWithActor[] =
+      notificationRows.map(
+        (notification) => ({
+          ...notification,
+          actor:
+            notification.actor_id
+              ? actorMap.get(
+                  notification.actor_id
+                ) || null
+              : null,
+        })
+      );
 
     setNotifications(combined);
     setLoading(false);
@@ -174,6 +202,7 @@ export default function NotificationsPage() {
       }
 
       setUserId(user.id);
+
       await loadNotifications(user.id);
     }
 
@@ -188,7 +217,9 @@ export default function NotificationsPage() {
     if (!userId) return;
 
     const channel = supabase
-      .channel(`notifications-${userId}`)
+      .channel(
+        `notifications-${userId}`
+      )
       .on(
         "postgres_changes",
         {
@@ -198,32 +229,49 @@ export default function NotificationsPage() {
           filter: `user_id=eq.${userId}`,
         },
         async () => {
-          await loadNotifications(userId);
+          await loadNotifications(
+            userId
+          );
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(
+        channel
+      );
     };
   }, [userId]);
 
-  async function markAsRead(id: string) {
+  async function markAsRead(
+    id: string
+  ) {
     const { error } = await supabase
       .from("notification")
-      .update({ is_read: true })
+      .update({
+        is_read: true,
+      })
       .eq("id", id)
       .eq("user_id", userId);
 
     if (error) {
-      console.error("Mark notification as read error:", error);
+      console.error(
+        "Mark notification as read error:",
+        error
+      );
       return;
     }
 
-    setNotifications((current) =>
-      current.map((item) =>
-        item.id === id ? { ...item, is_read: true } : item
-      )
+    setNotifications(
+      (current) =>
+        current.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                is_read: true,
+              }
+            : item
+        )
     );
   }
 
@@ -234,34 +282,48 @@ export default function NotificationsPage() {
 
     const { error } = await supabase
       .from("notification")
-      .update({ is_read: true })
+      .update({
+        is_read: true,
+      })
       .eq("user_id", userId)
       .eq("is_read", false);
 
     if (error) {
-      console.error("Mark all notifications error:", error);
+      console.error(
+        "Mark all notifications error:",
+        error
+      );
+
       setMarkingAll(false);
       return;
     }
 
-    setNotifications((current) =>
-      current.map((item) => ({
-        ...item,
-        is_read: true,
-      }))
+    setNotifications(
+      (current) =>
+        current.map((item) => ({
+          ...item,
+          is_read: true,
+        }))
     );
 
     setMarkingAll(false);
   }
 
-  const unreadCount = notifications.filter(
-    (notification) => !notification.is_read
-  ).length;
+  const unreadCount =
+    notifications.filter(
+      (notification) =>
+        !notification.is_read
+    ).length;
 
-  function getInitials(profile: Profile | null) {
+  function getInitials(
+    profile: Profile | null
+  ) {
     if (!profile) return "N";
 
-    const name = profile.full_name || profile.username || "Nikelink";
+    const name =
+      profile.full_name ||
+      profile.username ||
+      "Nikelink";
 
     return name
       .split(" ")
@@ -272,18 +334,32 @@ export default function NotificationsPage() {
       .toUpperCase();
   }
 
-  function getActorName(profile: Profile | null) {
+  function getActorName(
+    profile: Profile | null
+  ) {
     if (!profile) return "Someone";
 
-    return profile.full_name || profile.username || "Someone";
+    return (
+      profile.full_name ||
+      profile.username ||
+      "Someone"
+    );
   }
 
-  function getNotificationIcon(type: string) {
-    if (type === "connection_request") {
+  function getNotificationIcon(
+    type: string
+  ) {
+    if (
+      type ===
+      "connection_request"
+    ) {
       return "👥";
     }
 
-    if (type === "connection_accepted") {
+    if (
+      type ===
+      "connection_accepted"
+    ) {
       return "✓";
     }
 
@@ -299,51 +375,99 @@ export default function NotificationsPage() {
       return "✉";
     }
 
+    if (type === "follow") {
+      return "＋";
+    }
+
     return "🔔";
   }
 
-  function openNotification(notification: NotificationWithActor) {
+  async function openNotification(
+    notification: NotificationWithActor
+  ) {
     if (!notification.is_read) {
-      markAsRead(notification.id);
+      await markAsRead(
+        notification.id
+      );
     }
 
     if (
-      notification.type === "connection_request" &&
+      notification.type ===
+        "connection_request" &&
       notification.actor_id
     ) {
-      router.push(`/profile?user=${notification.actor_id}`);
+      router.push(
+        `/profile?user=${notification.actor_id}`
+      );
+
+      return;
     }
 
     if (
-      notification.type === "connection_accepted" &&
+      notification.type ===
+        "connection_accepted" &&
       notification.actor_id
     ) {
-      router.push(`/profile?user=${notification.actor_id}`);
+      router.push(
+        `/profile?user=${notification.actor_id}`
+      );
+
+      return;
     }
 
     if (
-      notification.type === "message" &&
+      notification.type ===
+        "message" &&
       notification.actor_id
     ) {
-      router.push(`/messages?user=${notification.actor_id}`);
+      router.push(
+        `/messages?user=${notification.actor_id}`
+      );
+
+      return;
     }
   }
 
+  const welcomeNotification =
+    notifications.find(
+      (notification) =>
+        notification.type ===
+        "welcome"
+    );
+
+  const normalNotifications =
+    notifications.filter(
+      (notification) =>
+        notification.type !==
+        "welcome"
+    );
+
   return (
     <main className="min-h-screen bg-[#050816] text-white">
-      <div className="mx-auto min-h-screen max-w-3xl px-4 pb-28 pt-5 sm:px-6">
-        {/* Header */}
+      {/* BACKGROUND GLOW */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -left-32 top-20 h-80 w-80 rounded-full bg-violet-600/10 blur-3xl" />
+
+        <div className="absolute -right-32 top-72 h-96 w-96 rounded-full bg-blue-600/10 blur-3xl" />
+
+        <div className="absolute left-1/2 top-[45%] h-72 w-72 -translate-x-1/2 rounded-full bg-pink-600/5 blur-3xl" />
+      </div>
+
+      <div className="relative mx-auto min-h-screen max-w-3xl px-4 pb-28 pt-5 sm:px-6">
+        {/* HEADER */}
         <header className="mb-6 flex items-center justify-between">
           <div>
             <div className="mb-1 flex items-center gap-2">
-              <span className="text-2xl">🔔</span>
+              <span className="text-2xl">
+                🔔
+              </span>
 
               <h1 className="text-2xl font-bold tracking-tight">
                 Notifications
               </h1>
 
               {unreadCount > 0 && (
-                <span className="rounded-full bg-pink-500 px-2 py-0.5 text-xs font-bold">
+                <span className="rounded-full bg-pink-500 px-2 py-0.5 text-xs font-bold shadow-lg shadow-pink-500/20">
                   {unreadCount}
                 </span>
               )}
@@ -356,163 +480,348 @@ export default function NotificationsPage() {
 
           {unreadCount > 0 && (
             <button
-              onClick={markAllAsRead}
+              onClick={
+                markAllAsRead
+              }
               disabled={markingAll}
               className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/[0.08] disabled:opacity-50"
             >
-              {markingAll ? "Updating..." : "Mark all read"}
+              {markingAll
+                ? "Updating..."
+                : "Mark all read"}
             </button>
           )}
         </header>
 
-        {/* Notification list */}
-        <section className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.035] shadow-2xl shadow-black/20">
+        {/* CONTENT */}
+        <section className="space-y-4">
           {loading ? (
-            <div className="space-y-3 p-4">
-              {[1, 2, 3, 4].map((item) => (
-                <div
-                  key={item}
-                  className="animate-pulse rounded-2xl border border-white/5 bg-white/[0.025] p-4"
-                >
-                  <div className="flex gap-3">
-                    <div className="h-12 w-12 rounded-full bg-white/10" />
+            <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.035] p-4 shadow-2xl shadow-black/20">
+              <div className="space-y-3">
+                {[1, 2, 3, 4].map(
+                  (item) => (
+                    <div
+                      key={item}
+                      className="animate-pulse rounded-2xl border border-white/5 bg-white/[0.025] p-4"
+                    >
+                      <div className="flex gap-3">
+                        <div className="h-12 w-12 rounded-full bg-white/10" />
 
-                    <div className="flex-1">
-                      <div className="mb-2 h-3 w-40 rounded bg-white/10" />
-                      <div className="h-3 w-64 max-w-full rounded bg-white/10" />
+                        <div className="flex-1">
+                          <div className="mb-2 h-3 w-40 rounded bg-white/10" />
+
+                          <div className="h-3 w-64 max-w-full rounded bg-white/10" />
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : notifications.length === 0 ? (
-            <div className="px-6 py-20 text-center">
-              <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-3xl">
-                🔔
+                  )
+                )}
               </div>
-
-              <h2 className="text-lg font-semibold">
-                No notifications yet
-              </h2>
-
-              <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-400">
-                When people connect with you or interact with your activity,
-                you will see their notifications here.
-              </p>
             </div>
           ) : (
-            <div className="divide-y divide-white/5">
-              {notifications.map((notification) => {
-                const actorName = getActorName(notification.actor);
+            <>
+              {/* ================================================= */}
+              {/* WELCOME CARD */}
+              {/* ================================================= */}
 
-                return (
-                  <button
-                    key={notification.id}
-                    onClick={() => openNotification(notification)}
-                    className={`group flex w-full gap-3 px-4 py-4 text-left transition sm:px-5 ${
-                      notification.is_read
-                        ? "bg-transparent hover:bg-white/[0.025]"
-                        : "bg-pink-500/[0.06] hover:bg-pink-500/[0.09]"
-                    }`}
-                  >
-                    {/* Avatar */}
-                    <div className="relative shrink-0">
-                      {notification.actor?.avatar_url ? (
-                        <img
-                          src={notification.actor.avatar_url}
-                          alt={actorName}
-                          className="h-12 w-12 rounded-full border border-white/10 object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-gradient-to-br from-fuchsia-500/30 via-violet-500/30 to-cyan-400/30 text-sm font-bold">
-                          {getInitials(notification.actor)}
-                        </div>
+              {welcomeNotification && (
+                <button
+                  onClick={() =>
+                    markAsRead(
+                      welcomeNotification.id
+                    )
+                  }
+                  className={`group relative w-full overflow-hidden rounded-[2rem] border text-left shadow-2xl transition ${
+                    welcomeNotification.is_read
+                      ? "border-violet-500/15 bg-gradient-to-br from-violet-600/[0.08] via-blue-600/[0.06] to-pink-600/[0.06]"
+                      : "border-violet-500/30 bg-gradient-to-br from-violet-600/[0.18] via-blue-600/[0.12] to-pink-600/[0.12] shadow-violet-900/20"
+                  }`}
+                >
+                  {/* Glow */}
+                  <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-violet-500/20 blur-3xl" />
+
+                  <div className="pointer-events-none absolute -bottom-24 -left-20 h-56 w-56 rounded-full bg-blue-500/15 blur-3xl" />
+
+                  {/* Decorative circles */}
+                  <div className="pointer-events-none absolute right-6 top-6 h-24 w-24 rounded-full border border-white/10" />
+
+                  <div className="pointer-events-none absolute right-11 top-11 h-14 w-14 rounded-full border border-white/10" />
+
+                  <div className="relative p-6">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-3xl shadow-lg">
+                        🌍
+                      </div>
+
+                      {!welcomeNotification.is_read && (
+                        <span className="mt-2 flex h-3 w-3 shrink-0 rounded-full bg-violet-400 shadow-lg shadow-violet-500/60" />
                       )}
+                    </div>
 
-                      <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#050816] bg-violet-500 text-xs">
-                        {getNotificationIcon(notification.type)}
+                    <div className="mt-5">
+                      <p className="text-[11px] font-black uppercase tracking-[0.25em] text-violet-300">
+                        Welcome to Nikelink
+                      </p>
+
+                      <h2 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">
+                        Hey, welcome! 👋
+                      </h2>
+
+                      <p className="mt-3 text-sm leading-7 text-white/65">
+                        You’ve just joined a growing global community built around connecting, sharing, and belonging.
+                      </p>
+                    </div>
+
+                    {/* WHAT TO KNOW */}
+                    <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4">
+                      <p className="text-xs font-black uppercase tracking-wider text-white/50">
+                        A few things to know
+                      </p>
+
+                      <div className="mt-4 space-y-3">
+                        <div className="flex gap-3">
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-sm">
+                            🌍
+                          </span>
+
+                          <p className="text-xs leading-5 text-white/60">
+                            Discover people and communities from different places.
+                          </p>
+                        </div>
+
+                        <div className="flex gap-3">
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 text-sm">
+                            🤝
+                          </span>
+
+                          <p className="text-xs leading-5 text-white/60">
+                            Connect with people and start conversations.
+                          </p>
+                        </div>
+
+                        <div className="flex gap-3">
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-pink-500/15 text-sm">
+                            ✨
+                          </span>
+
+                          <p className="text-xs leading-5 text-white/60">
+                            Share thoughts, interests, photos and experiences.
+                          </p>
+                        </div>
+
+                        <div className="flex gap-3">
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-cyan-500/15 text-sm">
+                            🔔
+                          </span>
+
+                          <p className="text-xs leading-5 text-white/60">
+                            We’ll keep you updated when people interact with you.
+                          </p>
+                        </div>
+
+                        <div className="flex gap-3">
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-sm">
+                            💙
+                          </span>
+
+                          <p className="text-xs leading-5 text-white/60">
+                            Respect others and help keep Nikelink welcoming for everyone.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 flex items-center justify-between gap-3">
+                      <p className="text-xs font-bold text-violet-300">
+                        Your journey starts here.
+                      </p>
+
+                      <span className="text-xs text-white/30">
+                        {formatTime(
+                          welcomeNotification.created_at
+                        )}
                       </span>
                     </div>
 
-                    {/* Content */}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-3">
-                        <p
-                          className={`text-sm leading-5 ${
-                            notification.is_read
-                              ? "text-slate-300"
-                              : "font-semibold text-white"
-                          }`}
-                        >
-                          {notification.type === "connection_request" ? (
-                            <>
-                              <span className="font-bold">{actorName}</span>{" "}
-                              sent you a connection request.
-                            </>
-                          ) : notification.type ===
-                            "connection_accepted" ? (
-                            <>
-                              <span className="font-bold">{actorName}</span>{" "}
-                              accepted your connection request.
-                            </>
-                          ) : (
-                            <>
-                              <span className="font-bold">{actorName}</span>{" "}
-                              {notification.message || notification.title}
-                            </>
-                          )}
-                        </p>
-
-                        {!notification.is_read && (
-                          <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-pink-400 shadow-lg shadow-pink-500/50" />
-                        )}
-                      </div>
-
-                      <div className="mt-1 flex items-center gap-2">
-                        <span className="text-xs text-slate-500">
-                          {formatTime(notification.created_at)}
-                        </span>
-
-                        {notification.title &&
-                          notification.type !== "connection_request" &&
-                          notification.type !== "connection_accepted" && (
-                            <>
-                              <span className="text-slate-700">•</span>
-                              <span className="text-xs text-slate-500">
-                                {notification.title}
-                              </span>
-                            </>
-                          )}
-                      </div>
+                    <div className="mt-5 border-t border-white/10 pt-4">
+                      <p className="text-center text-sm font-black tracking-wide text-white/80">
+                        Connect. Share. Belong. 💙
+                      </p>
                     </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </section>
-      </div>
+                  </div>
+                </button>
+              )}
 
-      {/* Bottom navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#050816]/95 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-3xl items-center justify-around px-2 py-2">
-          {navItems.map((item) => (
-            <button
-              key={item.path}
-              onClick={() => router.push(item.path)}
-              className="flex min-w-[62px] flex-col items-center gap-1 rounded-xl px-2 py-2 text-slate-400 transition hover:bg-white/[0.05] hover:text-white"
-            >
-              <span className="text-xl leading-none">
-                {item.icon}
-              </span>
+              {/* ================================================= */}
+              {/* NORMAL NOTIFICATIONS */}
+              {/* ================================================= */}
 
-              <span className="text-[10px] font-medium">
-                {item.label}
-              </span>
-            </button>
-          ))}
-        </div>
-      </nav>
-    </main>
-  );
+              {normalNotifications.length ===
+              0 ? (
+                !welcomeNotification && (
+                  <div className="rounded-3xl border border-white/10 bg-white/[0.035] px-6 py-20 text-center shadow-2xl shadow-black/20">
+                    <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-3xl">
+                      🔔
+                    </div>
+
+                    <h2 className="text-lg font-semibold">
+                      No notifications yet
+                    </h2>
+
+                    <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-400">
+                      When people connect with you or interact with your activity, you will see their notifications here.
+                    </p>
+                  </div>
+                )
+              ) : (
+                <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.035] shadow-2xl shadow-black/20">
+                  <div className="divide-y divide-white/5">
+                    {normalNotifications.map(
+                      (
+                        notification
+                      ) => {
+                        const actorName =
+                          getActorName(
+                            notification.actor
+                          );
+
+                        return (
+                          <button
+                            key={
+                              notification.id
+                            }
+                            onClick={() =>
+                              openNotification(
+                                notification
+                              )
+                            }
+                            className={`group flex w-full gap-3 px-4 py-4 text-left transition sm:px-5 ${
+                              notification.is_read
+                                ? "bg-transparent hover:bg-white/[0.025]"
+                                : "bg-pink-500/[0.06] hover:bg-pink-500/[0.09]"
+                            }`}
+                          >
+                            {/* AVATAR */}
+<div className="relative shrink-0">
+  {notification.actor?.avatar_url ? (
+    <img
+      src={notification.actor.avatar_url}
+      alt={actorName}
+      className="h-12 w-12 rounded-full border border-white/10 object-cover"
+    />
+  ) : (
+    <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-gradient-to-br from-fuchsia-500/30 via-violet-500/30 to-cyan-400/30 text-sm font-bold">
+      {getInitials(notification.actor)}
+    </div>
+  )}
+
+  <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#050816] bg-violet-500 text-xs">
+    {getNotificationIcon(notification.type)}
+  </span>
+</div>
+
+{/* CONTENT */}
+<div className="min-w-0 flex-1">
+  <div className="flex items-start justify-between gap-3">
+    <p
+      className={`text-sm leading-5 ${
+        notification.is_read
+          ? "text-slate-300"
+          : "font-semibold text-white"
+      }`}
+    >
+      {notification.type ===
+      "connection_request" ? (
+        <>
+          <span className="font-bold">
+            {actorName}
+          </span>{" "}
+          sent you a connection request.
+        </>
+      ) : notification.type ===
+        "connection_accepted" ? (
+        <>
+          <span className="font-bold">
+            {actorName}
+          </span>{" "}
+          accepted your connection request.
+        </>
+      ) : (
+        <>
+          <span className="font-bold">
+            {actorName}
+          </span>{" "}
+          {notification.message ||
+            notification.title}
+        </>
+      )}
+    </p>
+
+    {!notification.is_read && (
+      <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-pink-400 shadow-lg shadow-pink-500/50" />
+    )}
+  </div>
+
+  <div className="mt-1 flex items-center gap-2">
+    <span className="text-xs text-slate-500">
+      {formatTime(
+        notification.created_at
+      )}
+    </span>
+
+    {notification.title &&
+      notification.type !==
+        "connection_request" &&
+      notification.type !==
+        "connection_accepted" && (
+        <>
+          <span className="text-slate-700">
+            •
+          </span>
+
+          <span className="text-xs text-slate-500">
+            {notification.title}
+          </span>
+        </>
+      )}
+  </div>
+</div>
+</button>
+);
+})}
+</div>
+</div>
+)}
+</>
+)}
+</section>
+</div>
+
+{/* BOTTOM NAVIGATION */}
+<nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#050816]/95 backdrop-blur-xl">
+  <div className="mx-auto flex max-w-3xl items-center justify-around px-2 py-2">
+    {navItems.map((item) => (
+      <button
+        key={item.path}
+        onClick={() =>
+          router.push(item.path)
+        }
+        className="flex min-w-[62px] flex-col items-center gap-1 rounded-xl px-2 py-2 text-slate-400 transition hover:bg-white/[0.05] hover:text-white"
+      >
+        <span className="text-xl leading-none">
+          {item.icon}
+        </span>
+
+        <span className="text-[10px] font-medium">
+          {item.label}
+        </span>
+      </button>
+    ))}
+  </div>
+</nav>
+</main>
+);
 }
+                      
+                                
+  
