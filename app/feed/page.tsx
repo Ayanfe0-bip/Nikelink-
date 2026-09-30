@@ -1686,16 +1686,11 @@ useEffect(() => {
           {/* CREATE */}
           <button
             onClick={() => {
-              const textarea =
-                document.querySelector(
-                  "textarea"
-                ) as HTMLTextAreaElement | null;
-
-              if (textarea) {
-                textarea.scrollIntoView({
-                  behavior: "smooth",
-                  block: "center",
-                });
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth",
+  });
+}}
 
                 setTimeout(() => {
                   textarea.focus();
