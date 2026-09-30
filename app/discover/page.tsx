@@ -305,7 +305,7 @@ export default function DiscoverPage() {
   const [userId, setUserId] = useState("");
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
-  const [search, Search] = useState("");
+  const [search, setSearch] = useState("");
   const [filter, setFilter] =
     useState<FilterType>("all");
 
