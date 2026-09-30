@@ -113,13 +113,10 @@ useEffect(() => {
       router.replace("/login");
       return;
     }
+  const currentUserId = userData.user.id;
 
-    const currentUserId =
-      userData.user.id;
+setUserId(currentUserId);
 
-    setUserId(currentUserId);
-
-    const { data: profile } =
 const { count } = await supabase
   .from("notification")
   .select("*", {
@@ -131,7 +128,10 @@ const { count } = await supabase
 
 setUnreadNotifications(
   count || 0
-);      await supabase
+);
+
+const { data: profile } =  
+          await supabase
         .from("profiles")
         .select(
           "id, full_name, username, avatar_url, interests"
