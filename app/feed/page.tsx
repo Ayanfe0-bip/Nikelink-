@@ -759,7 +759,53 @@ useEffect(() => {
 
     return created.toLocaleDateString();
   }
+useEffect(() => {
+  if (
+    !highlightedPostId ||
+    posts.length === 0
+  ) {
+    return;
+  }
 
+  const timer = window.setTimeout(() => {
+    const element =
+      document.getElementById(
+        `post-${highlightedPostId}`
+      );
+
+    if (!element) {
+      return;
+    }
+
+    element.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+
+    element.classList.add(
+      "ring-2",
+      "ring-violet-400/70",
+      "shadow-2xl",
+      "shadow-violet-500/20"
+    );
+
+    window.setTimeout(() => {
+      element.classList.remove(
+        "ring-2",
+        "ring-violet-400/70",
+        "shadow-2xl",
+        "shadow-violet-500/20"
+      );
+    }, 3000);
+  }, 300);
+
+  return () => {
+    window.clearTimeout(timer);
+  };
+}, [
+  highlightedPostId,
+  posts.length,
+]);
   function getPostLikes(
     postId: string
   ) {
