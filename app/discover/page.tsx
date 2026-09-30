@@ -139,31 +139,60 @@ function GlobalActivity() {
       <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br from-blue-500/[0.08] via-violet-500/[0.06] to-pink-500/[0.06] shadow-2xl shadow-black/20">
 
         {/* GLOBE VISUAL */}
-        <div className="relative flex h-56 items-center justify-center overflow-hidden border-b border-white/10">
+        <div className="relative flex h-72 items-center justify-center overflow-hidden border-b border-white/10 bg-[#040817]">
 
-          <div className="absolute h-52 w-52 rounded-full border border-blue-400/20 shadow-[0_0_80px_rgba(59,130,246,0.18)]" />
+          {/* Ambient glow */}
+          <div className="absolute h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
+          <div className="absolute h-48 w-48 rounded-full bg-violet-500/10 blur-3xl" />
 
-          <div className="absolute h-40 w-40 rounded-full border border-violet-400/20" />
+          {/* Orbit ring 1 */}
+          <div className="absolute h-60 w-60 rounded-full border border-blue-400/20 rotate-[18deg] shadow-[0_0_45px_rgba(59,130,246,0.12)]" />
 
-          <div className="absolute h-28 w-28 rounded-full border border-pink-400/20" />
+          {/* Orbit ring 2 */}
+          <div className="absolute h-52 w-52 rounded-full border border-violet-400/20 rotate-[-35deg]" />
 
-          <div className="absolute h-2 w-2 rounded-full bg-blue-400 shadow-[0_0_20px_rgba(96,165,250,0.9)]" />
+          {/* Orbit ring 3 */}
+          <div className="absolute h-44 w-44 rounded-full border border-pink-400/20 rotate-[65deg]" />
 
-          <div className="absolute left-[28%] top-[30%] h-2 w-2 rounded-full bg-violet-400 shadow-[0_0_18px_rgba(167,139,250,0.9)]" />
+          {/* Horizontal globe line */}
+          <div className="absolute h-24 w-60 rounded-[50%] border border-blue-300/15" />
 
-          <div className="absolute right-[27%] top-[42%] h-2 w-2 rounded-full bg-pink-400 shadow-[0_0_18px_rgba(244,114,182,0.9)]" />
+          {/* Vertical globe line */}
+          <div className="absolute h-60 w-24 rounded-[50%] border border-violet-300/15" />
 
-          <div className="absolute bottom-[27%] left-[35%] h-1.5 w-1.5 rounded-full bg-cyan-300 shadow-[0_0_15px_rgba(103,232,249,0.9)]" />
+          {/* Connection lines */}
+          <div className="absolute h-px w-40 rotate-[18deg] bg-gradient-to-r from-transparent via-blue-400/50 to-transparent" />
 
-          <div className="relative flex h-24 w-24 items-center justify-center rounded-full border border-white/10 bg-[#080d20]/90 text-5xl shadow-2xl">
+          <div className="absolute h-px w-36 rotate-[-28deg] bg-gradient-to-r from-transparent via-violet-400/50 to-transparent" />
+
+          <div className="absolute h-px w-32 rotate-[52deg] bg-gradient-to-r from-transparent via-pink-400/40 to-transparent" />
+
+          {/* Activity nodes */}
+          <div className="absolute left-[23%] top-[31%] h-2.5 w-2.5 rounded-full bg-blue-400 shadow-[0_0_20px_rgba(96,165,250,1)]" />
+
+          <div className="absolute right-[24%] top-[28%] h-2 w-2 rounded-full bg-violet-400 shadow-[0_0_18px_rgba(167,139,250,1)]" />
+
+          <div className="absolute right-[19%] top-[55%] h-2.5 w-2.5 rounded-full bg-pink-400 shadow-[0_0_20px_rgba(244,114,182,1)]" />
+
+          <div className="absolute left-[30%] bottom-[25%] h-2 w-2 rounded-full bg-cyan-300 shadow-[0_0_18px_rgba(103,232,249,1)]" />
+
+          <div className="absolute left-[48%] top-[18%] h-1.5 w-1.5 rounded-full bg-white shadow-[0_0_14px_rgba(255,255,255,0.9)]" />
+
+          <div className="absolute right-[39%] bottom-[20%] h-1.5 w-1.5 rounded-full bg-blue-300 shadow-[0_0_14px_rgba(147,197,253,0.9)]" />
+
+          {/* Globe */}
+          <div className="relative z-10 flex h-28 w-28 items-center justify-center rounded-full border border-white/10 bg-[#080d20]/95 text-6xl shadow-[0_0_70px_rgba(59,130,246,0.28)]">
             🌍
           </div>
 
-          <div className="absolute bottom-4 rounded-full border border-white/10 bg-black/30 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-white/50 backdrop-blur-md">
-            Connect globally
+          {/* Status */}
+          <div className="absolute bottom-4 z-20 flex items-center gap-2 rounded-full border border-white/10 bg-black/40 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-white/55 backdrop-blur-xl">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
+            Global activity
           </div>
         </div>
 
+      
         {/* STATS */}
         <div className="grid grid-cols-2 gap-px bg-white/10">
           <div className="bg-[#080d20]/70 p-5">
