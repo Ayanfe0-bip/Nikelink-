@@ -127,6 +127,39 @@ useEffect(() => {
     setHighlightedPostId(postId);
   }
 }, []);
+  useEffect(() => {
+  const refreshUnreadNotifications = () => {
+    if (!userId) return;
+
+    supabase
+      .from("notification")
+      .select("*", {
+        count: "exact",
+        head: true,
+      })
+      .eq("user_id", userId)
+      .eq("is_read", false)
+      .then(({ count, error }) => {
+        if (!error) {
+          setUnreadNotifications(
+            count || 0
+          );
+        }
+      });
+  };
+
+  window.addEventListener(
+    "focus",
+    refreshUnreadNotifications
+  );
+
+  return () => {
+    window.removeEventListener(
+      "focus",
+      refreshUnreadNotifications
+    );
+  };
+}, [userId]);
   async function loadFeed() {
     const {
       data: userData,
