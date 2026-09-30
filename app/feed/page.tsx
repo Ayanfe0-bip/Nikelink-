@@ -96,7 +96,31 @@ useEffect(() => {
   const params = new URLSearchParams(
     window.location.search
   );
+useEffect(() => {
+  if (!userId) return;
 
+  const channel = supabase
+    .channel(`feed-notifications-${userId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "notification",
+        filter: `user_id=eq.${userId}`,
+      },
+      () => {
+        setUnreadNotifications(
+          (current) => current + 1
+        );
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, [userId]);
   const postId = params.get("post");
 
   if (postId) {
