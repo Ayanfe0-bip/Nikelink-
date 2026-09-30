@@ -8,6 +8,7 @@ type Notification = {
   id: string;
   user_id: string;
   actor_id: string | null;
+  post_id: string | null;
   type: string;
   title: string;
   message: string | null;
@@ -382,66 +383,78 @@ export default function NotificationsPage() {
     return "🔔";
   }
 
-  async function openNotification(
-    notification: NotificationWithActor
-  ) {
-    if (!notification.is_read) {
-      await markAsRead(
-        notification.id
-      );
-    }
-
-    if (
-      notification.type ===
-        "connection_request" &&
-      notification.actor_id
-    ) {
-      router.push(
-        `/profile?user=${notification.actor_id}`
-      );
-
-      return;
-    }
-
-    if (
-      notification.type ===
-        "connection_accepted" &&
-      notification.actor_id
-    ) {
-      router.push(
-        `/profile?user=${notification.actor_id}`
-      );
-
-      return;
-    }
-
-    if (
-      notification.type ===
-        "message" &&
-      notification.actor_id
-    ) {
-      router.push(
-        `/messages?user=${notification.actor_id}`
-      );
-
-      return;
-    }
+  
+async function openNotification(
+  notification: NotificationWithActor
+) {
+  if (!notification.is_read) {
+    await markAsRead(notification.id);
   }
 
-  const welcomeNotification =
-    notifications.find(
-      (notification) =>
-        notification.type ===
-        "welcome"
+  // Like or comment notification
+  // → open the exact post
+  if (
+    (notification.type === "like" ||
+      notification.type === "comment") &&
+    notification.post_id
+  ) {
+    router.push(
+      `/feed?post=${notification.post_id}`
     );
 
-  const normalNotifications =
-    notifications.filter(
-      (notification) =>
-        notification.type !==
-        "welcome"
+    return;
+  }
+
+  // Connection request
+  if (
+    notification.type ===
+      "connection_request" &&
+    notification.actor_id
+  ) {
+    router.push(
+      `/profile?user=${notification.actor_id}`
     );
 
+    return;
+  }
+
+  // Connection accepted
+  if (
+    notification.type ===
+      "connection_accepted" &&
+    notification.actor_id
+  ) {
+    router.push(
+      `/profile?user=${notification.actor_id}`
+    );
+
+    return;
+  }
+
+  // Message
+  if (
+    notification.type === "message" &&
+    notification.actor_id
+  ) {
+    router.push(
+      `/messages?user=${notification.actor_id}`
+    );
+
+    return;
+  }
+
+  // Follow notification
+  if (
+    notification.type === "follow" &&
+    notification.actor_id
+  ) {
+    router.push(
+      `/profile?user=${notification.actor_id}`
+    );
+
+    return;
+  }
+}
   return (
     <main className="min-h-screen bg-[#050816] text-white">
       {/* BACKGROUND GLOW */}
