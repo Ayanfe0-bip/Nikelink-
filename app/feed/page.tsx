@@ -30,6 +30,7 @@ type Profile = {
   full_name: string | null;
   username: string | null;
   avatar_url: string | null;
+  interests?: string[] | null;
 };
 
 export default function FeedPage() {
@@ -38,6 +39,7 @@ export default function FeedPage() {
   const [userId, setUserId] = useState("");
   const [userName, setUserName] = useState("Nikelink User");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [userInterests, setUserInterests] = useState<string[]>([]);
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -70,8 +72,10 @@ export default function FeedPage() {
   }, []);
 
   async function loadFeed() {
-    const { data: userData, error: userError } =
-      await supabase.auth.getUser();
+    const {
+      data: userData,
+      error: userError,
+    } = await supabase.auth.getUser();
 
     if (userError || !userData.user) {
       router.replace("/login");
@@ -84,7 +88,9 @@ export default function FeedPage() {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("id, full_name, username, avatar_url")
+      .select(
+        "id, full_name, username, avatar_url, interests"
+      )
       .eq("id", currentUserId)
       .maybeSingle();
 
@@ -96,6 +102,12 @@ export default function FeedPage() {
       );
 
       setAvatarUrl(profile.avatar_url || "");
+
+      setUserInterests(
+        Array.isArray(profile.interests)
+          ? profile.interests
+          : []
+      );
     }
 
     await Promise.all([
@@ -111,44 +123,54 @@ export default function FeedPage() {
     const { data, error } = await supabase
       .from("posts")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("created_at", {
+        ascending: false,
+      });
 
     if (error) {
-      console.error("Error loading posts:", error);
+      console.error("Posts error:", error);
       return;
     }
 
-    if (data) {
-      setPosts(data);
+    if (!data) return;
 
-      const userIds = [
-        ...new Set(
-          data
-            .map((post) => post.user_id)
-            .filter(Boolean)
-        ),
-      ];
+    setPosts(data);
 
-      if (userIds.length > 0) {
-        const { data: authorProfiles, error: profileError } =
-          await supabase
-            .from("profiles")
-            .select(
-              "id, full_name, username, avatar_url"
-            )
-            .in("id", userIds);
+    const userIds = Array.from(
+      new Set(
+        data.map((post) => post.user_id)
+      )
+    );
 
-        if (!profileError && authorProfiles) {
-          const profileMap: Record<string, Profile> = {};
+    if (userIds.length === 0) return;
 
-          authorProfiles.forEach((profile) => {
-            profileMap[profile.id] = profile;
-          });
+    const {
+      data: authorProfiles,
+      error: profileError,
+    } = await supabase
+      .from("profiles")
+      .select(
+        "id, full_name, username, avatar_url, interests"
+      )
+      .in("id", userIds);
 
-          setProfiles(profileMap);
-        }
-      }
+    if (profileError) {
+      console.error(
+        "Author profiles error:",
+        profileError
+      );
+      return;
     }
+
+    if (!authorProfiles) return;
+
+    const profileMap: Record<string, Profile> = {};
+
+    authorProfiles.forEach((profile) => {
+      profileMap[profile.id] = profile;
+    });
+
+    setProfiles(profileMap);
   }
 
   async function loadComments() {
@@ -157,7 +179,9 @@ export default function FeedPage() {
       .select(
         "id, post_id, user_id, content, created_at"
       )
-      .order("created_at", { ascending: true });
+      .order("created_at", {
+        ascending: true,
+      });
 
     if (!error && data) {
       setComments(data);
@@ -167,7 +191,9 @@ export default function FeedPage() {
   async function loadLikes() {
     const { data, error } = await supabase
       .from("likes")
-      .select("id, post_id, user_id");
+      .select(
+        "id, post_id, user_id"
+      );
 
     if (!error && data) {
       setLikes(data);
@@ -179,7 +205,9 @@ export default function FeedPage() {
   ) {
     e.preventDefault();
 
-    if (!userId || !newPost.trim()) return;
+    if (!userId || !newPost.trim()) {
+      return;
+    }
 
     setPosting(true);
     setMessage("");
@@ -202,7 +230,10 @@ export default function FeedPage() {
     }
 
     if (data) {
-      setPosts((current) => [data, ...current]);
+      setPosts((current) => [
+        data,
+        ...current,
+      ]);
 
       setProfiles((current) => ({
         ...current,
@@ -210,14 +241,15 @@ export default function FeedPage() {
           id: userId,
           full_name: userName,
           username: null,
-          avatar_url: avatarUrl || null,
+          avatar_url: avatarUrl,
+          interests: userInterests,
         },
       }));
     }
 
     setNewPost("");
-    setMessage("Post published.");
     setPosting(false);
+    setMessage("Post published.");
 
     setTimeout(() => {
       setMessage("");
@@ -247,7 +279,8 @@ export default function FeedPage() {
 
       setLikes((current) =>
         current.filter(
-          (like) => like.id !== existingLike.id
+          (like) =>
+            like.id !== existingLike.id
         )
       );
 
@@ -260,7 +293,9 @@ export default function FeedPage() {
         post_id: postId,
         user_id: userId,
       })
-      .select("id, post_id, user_id")
+      .select(
+        "id, post_id, user_id"
+      )
       .single();
 
     if (error) {
@@ -269,11 +304,16 @@ export default function FeedPage() {
     }
 
     if (data) {
-      setLikes((current) => [...current, data]);
+      setLikes((current) => [
+        ...current,
+        data,
+      ]);
     }
   }
 
-  async function submitComment(postId: string) {
+  async function submitComment(
+    postId: string
+  ) {
     const content = (
       commentText[postId] || ""
     ).trim();
@@ -302,7 +342,10 @@ export default function FeedPage() {
     }
 
     if (data) {
-      setComments((current) => [...current, data]);
+      setComments((current) => [
+        ...current,
+        data,
+      ]);
     }
 
     setCommentText((current) => ({
@@ -333,7 +376,9 @@ export default function FeedPage() {
         return;
       }
 
-      await navigator.clipboard.writeText(shareUrl);
+      await navigator.clipboard.writeText(
+        shareUrl
+      );
 
       setMessage("Post link copied.");
 
@@ -341,11 +386,16 @@ export default function FeedPage() {
         setMessage("");
       }, 2000);
     } catch (error) {
-      console.log("Share cancelled:", error);
+      console.log(
+        "Share cancelled:",
+        error
+      );
     }
   }
 
-  async function handleDeletePost(postId: string) {
+  async function handleDeletePost(
+    postId: string
+  ) {
     const confirmed = window.confirm(
       "Are you sure you want to delete this post?"
     );
@@ -371,18 +421,22 @@ export default function FeedPage() {
     }
 
     setPosts((current) =>
-      current.filter((post) => post.id !== postId)
+      current.filter(
+        (post) => post.id !== postId
+      )
     );
 
     setComments((current) =>
       current.filter(
-        (comment) => comment.post_id !== postId
+        (comment) =>
+          comment.post_id !== postId
       )
     );
 
     setLikes((current) =>
       current.filter(
-        (like) => like.post_id !== postId
+        (like) =>
+          like.post_id !== postId
       )
     );
 
@@ -395,11 +449,16 @@ export default function FeedPage() {
     }, 2000);
   }
 
-  function handleReportPost(postId: string) {
+  function handleReportPost(
+    postId: string
+  ) {
     setOpenMenu(null);
     setMessage("Post reported.");
 
-    console.log("Reported post:", postId);
+    console.log(
+      "Reported post:",
+      postId
+    );
 
     setTimeout(() => {
       setMessage("");
@@ -411,55 +470,97 @@ export default function FeedPage() {
     const now = new Date();
 
     const difference = Math.floor(
-      (now.getTime() - created.getTime()) / 1000
+      (now.getTime() -
+        created.getTime()) /
+        1000
     );
 
-    if (difference < 60) return "Just now";
+    if (difference < 60) {
+      return "Just now";
+    }
 
     if (difference < 3600) {
-      return `${Math.floor(difference / 60)}m`;
+      return `${Math.floor(
+        difference / 60
+      )}m`;
     }
 
     if (difference < 86400) {
-      return `${Math.floor(difference / 3600)}h`;
+      return `${Math.floor(
+        difference / 3600
+      )}h`;
     }
 
     if (difference < 604800) {
-      return `${Math.floor(difference / 86400)}d`;
+      return `${Math.floor(
+        difference / 86400
+      )}d`;
     }
 
     return created.toLocaleDateString();
   }
 
-  function getPostLikes(postId: string) {
+  function getPostLikes(
+    postId: string
+  ) {
     return likes.filter(
-      (like) => like.post_id === postId
+      (like) =>
+        like.post_id === postId
     );
   }
 
-  function getPostComments(postId: string) {
+  function getPostComments(
+    postId: string
+  ) {
     return comments.filter(
-      (comment) => comment.post_id === postId
+      (comment) =>
+        comment.post_id === postId
     );
   }
 
   function getAuthor(post: Post) {
     if (post.user_id === userId) {
       return {
-        name: userName,
-        avatar: avatarUrl,
+        full_name: userName,
+        username: null,
+        avatar_url: avatarUrl,
       };
     }
 
-    const profile = profiles[post.user_id];
+    return (
+      profiles[post.user_id] || {
+        full_name: "Nikelink User",
+        username: null,
+        avatar_url: null,
+      }
+    );
+  }
 
-    return {
-      name:
-        profile?.full_name ||
-        profile?.username ||
-        "Nikelink User",
-      avatar: profile?.avatar_url || "",
-    };
+  function getPersonalizationScore(
+    post: Post
+  ) {
+    const author = profiles[post.user_id];
+
+    if (!author?.interests?.length) {
+      return 0;
+    }
+
+    if (!userInterests.length) {
+      return 0;
+    }
+
+    const userInterestSet = new Set(
+      userInterests.map((interest) =>
+        interest.toLowerCase().trim()
+      )
+    );
+
+    return author.interests.filter(
+      (interest) =>
+        userInterestSet.has(
+          interest.toLowerCase().trim()
+        )
+    ).length;
   }
 
   if (loading) {
@@ -480,13 +581,13 @@ export default function FeedPage() {
 
   return (
     <main className="min-h-screen bg-[#050816] pb-24 text-white">
-
-      {/* TOP HEADER */}
+      {/* TOP NAV */}
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#050816]/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
-
           <button
-            onClick={() => router.push("/feed")}
+            onClick={() =>
+              router.push("/feed")
+            }
             className="text-2xl font-black tracking-tight"
           >
             <span className="bg-gradient-to-r from-blue-400 via-violet-400 to-pink-400 bg-clip-text text-transparent">
@@ -495,154 +596,145 @@ export default function FeedPage() {
           </button>
 
           <div className="flex items-center gap-2">
-
-            {/* CREATE POST */}
             <button
-              onClick={() => {
-                document
-                  .getElementById("create-post")
-                  ?.scrollIntoView({
-                    behavior: "smooth",
-                    block: "center",
-                  });
-
-                setTimeout(() => {
-                  document
-                    .getElementById("post-textarea")
-                    ?.focus();
-                }, 400);
-              }}
-              className="flex h-10 items-center gap-2 rounded-full bg-gradient-to-r from-blue-500 via-violet-500 to-pink-500 px-4 text-sm font-bold shadow-lg shadow-violet-500/20"
+              onClick={() =>
+                router.push(
+                  "/notifications"
+                )
+              }
+              aria-label="Notifications"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-lg transition hover:bg-white/10"
             >
-              <span className="text-lg">+</span>
-
-              <span className="hidden sm:inline">
-                Create Post
-              </span>
-
-              <span className="sm:hidden">
-                Post
-              </span>
+              🔔
             </button>
 
-            {/* PROFILE AVATAR */}
             <button
-              onClick={() => router.push("/profile")}
-              className="h-10 w-10 overflow-hidden rounded-full border border-white/10 bg-gradient-to-br from-blue-500 via-violet-500 to-pink-500 shadow-lg shadow-blue-500/20"
+              onClick={() =>
+                router.push("/profile")
+              }
               aria-label="Profile"
+              className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-blue-500 to-violet-600 font-bold shadow-lg shadow-blue-500/20"
             >
               {avatarUrl ? (
                 <img
                   src={avatarUrl}
-                  alt="Your profile"
+                  alt={userName}
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <span className="flex h-full w-full items-center justify-center font-bold">
-                  {userName.charAt(0).toUpperCase()}
-                </span>
+                userName
+                  .charAt(0)
+                  .toUpperCase()
               )}
             </button>
-
           </div>
         </div>
       </header>
 
-      {/* MAIN CONTENT */}
-      <div className="mx-auto max-w-3xl px-4 py-6">
-
-        {/* PAGE INTRO */}
-        <section className="mb-6">
-          <p className="mb-1 text-sm font-medium text-blue-400">
-            Your global community
+      <div className="mx-auto max-w-3xl px-4 pt-6">
+        {/* WELCOME */}
+        <div className="mb-6">
+          <p className="text-sm text-white/40">
+            Welcome back
           </p>
 
-          <h1 className="text-3xl font-black tracking-tight">
-            Feed
+          <h1 className="mt-1 text-2xl font-bold">
+            {userName}
           </h1>
 
-          <p className="mt-2 text-sm text-white/45">
-            See what people in your Nikelink community are sharing.
+          <p className="mt-1 text-sm text-white/30">
+            Connect. Share. Belong.
           </p>
-        </section>
+        </div>
 
-        {/* CREATE POST CARD */}
-        <section
-          id="create-post"
-          className="mb-6 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] p-4 shadow-2xl shadow-black/20"
+        {/* PERSONALIZED FEED INFO */}
+        {userInterests.length > 0 && (
+          <div className="mb-5 rounded-2xl border border-violet-500/15 bg-violet-500/[0.06] px-4 py-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-blue-500">
+                ✨
+              </div>
+
+              <div className="min-w-0">
+                <p className="text-sm font-bold">
+                  Your personalized feed
+                </p>
+
+                <p className="mt-0.5 truncate text-xs text-white/35">
+                  Based on your interests
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* CREATE POST */}
+        <form
+          onSubmit={handleCreatePost}
+          className="mb-6 rounded-3xl border border-white/10 bg-white/[0.04] p-4 shadow-2xl shadow-black/20"
         >
-          <div className="mb-4 flex items-center gap-3">
-
-            {/* CURRENT USER AVATAR */}
-            <div className="h-11 w-11 overflow-hidden rounded-full bg-gradient-to-br from-blue-500 via-violet-500 to-pink-500 text-lg font-black">
+          <div className="flex gap-3">
+            <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-blue-500 to-violet-600 font-bold">
               {avatarUrl ? (
                 <img
                   src={avatarUrl}
-                  alt="Your profile"
+                  alt={userName}
                   className="h-full w-full object-cover"
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center">
-                  {userName.charAt(0).toUpperCase()}
+                  {userName
+                    .charAt(0)
+                    .toUpperCase()}
                 </div>
               )}
             </div>
 
-            <div>
-              <p className="font-semibold">
-                {userName}
-              </p>
-
-              <p className="text-xs text-white/40">
-                Share something with Nikelink
-              </p>
-            </div>
-
+            <textarea
+              value={newPost}
+              onChange={(e) =>
+                setNewPost(e.target.value)
+              }
+              placeholder="What's happening?"
+              rows={3}
+              maxLength={2000}
+              className="min-h-[80px] flex-1 resize-none rounded-2xl border border-white/10 bg-black/20 p-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-blue-500/50"
+            />
           </div>
 
-          <form onSubmit={handleCreatePost}>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <span className="text-xs text-white/30">
+              Share something with the community
+            </span>
 
-            <textarea
-              id="post-textarea"
-              value={newPost}
-              onChange={(e) => setNewPost(e.target.value)}
-              placeholder="What's on your mind?"
-              rows={4}
-              className="w-full resize-none rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-white outline-none placeholder:text-white/30 focus:border-violet-400/50 focus:ring-2 focus:ring-violet-500/10"
-            />
+            <button
+              type="submit"
+              disabled={
+                posting ||
+                !newPost.trim()
+              }
+              className="shrink-0 rounded-full bg-gradient-to-r from-blue-500 to-violet-600 px-5 py-2 text-sm font-bold shadow-lg shadow-blue-500/20 transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {posting
+                ? "Posting..."
+                : "Post"}
+            </button>
+          </div>
+        </form>
 
-            <div className="mt-3 flex items-center justify-between">
-
-              <p className="text-xs text-white/30">
-                Connect. Share. Belong.
-              </p>
-
-              <button
-                type="submit"
-                disabled={posting || !newPost.trim()}
-                className="rounded-full bg-gradient-to-r from-blue-500 via-violet-500 to-pink-500 px-5 py-2.5 text-sm font-bold shadow-lg shadow-violet-500/20 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {posting ? "Posting..." : "Post"}
-              </button>
-
-            </div>
-          </form>
-
-          {message && (
-            <div className="mt-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70">
-              {message}
-            </div>
-          )}
-        </section>
+        {/* MESSAGE */}
+        {message && (
+          <div className="mb-5 rounded-2xl border border-blue-400/20 bg-blue-500/10 px-4 py-3 text-sm text-blue-200">
+            {message}
+          </div>
+        )}
 
         {/* POSTS */}
-        <section className="space-y-4">
-
+        <div className="space-y-5">
           {posts.length === 0 ? (
-            <div className="rounded-3xl border border-white/10 bg-white/[0.04] px-6 py-12 text-center">
-
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/20 to-violet-500/20 text-2xl">
-                ✨
+            <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-10 text-center">
+              <div className="mb-3 text-4xl">
+                🌍
               </div>
 
               <h2 className="text-lg font-bold">
@@ -650,430 +742,449 @@ export default function FeedPage() {
               </h2>
 
               <p className="mt-2 text-sm text-white/40">
-                Be the first to share something with your community.
+                Be the first to share
+                something.
               </p>
-
             </div>
           ) : (
-            posts.map((post) => {
+            [...posts]
+              .sort((a, b) => {
+                const scoreA =
+                  getPersonalizationScore(a);
 
-              const postLikes = getPostLikes(post.id);
-              const postComments = getPostComments(post.id);
+                const scoreB =
+                  getPersonalizationScore(b);
 
-              const likedByUser = postLikes.some(
-                (like) => like.user_id === userId
-              );
+                if (scoreA !== scoreB) {
+                  return scoreB - scoreA;
+                }
 
-              const isOwner =
-                post.user_id === userId;
+                return (
+                  new Date(
+                    b.created_at
+                  ).getTime() -
+                  new Date(
+                    a.created_at
+                  ).getTime()
+                );
+              })
+              .map((post) => {
+                const postLikes =
+                  getPostLikes(post.id);
 
-              const author = getAuthor(post);
+                const postComments =
+                  getPostComments(
+                    post.id
+                  );
 
-              return (
-                <article
-                  key={post.id}
-                  className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] shadow-xl shadow-black/10"
-                >
+                const userLiked =
+                  postLikes.some(
+                    (like) =>
+                      like.user_id ===
+                      userId
+                  );
 
-                  {/* POST HEADER */}
-                  <div className="flex items-center justify-between px-4 py-4">
+                const isOwnPost =
+                  post.user_id ===
+                  userId;
 
-                    <div className="flex items-center gap-3">
+                const author =
+                  getAuthor(post);
 
-                      {/* POST AUTHOR AVATAR */}
-                      <button
-                        onClick={() =>
-                          router.push(
-                            isOwner
-                              ? "/profile"
-                              : `/profile?user=${post.user_id}`
-                          )
-                        }
-                        className="h-11 w-11 flex-shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-blue-500 via-violet-500 to-pink-500 font-black"
-                        aria-label={`${author.name} profile`}
-                      >
-                        {author.avatar ? (
-                          <img
-                            src={author.avatar}
-                            alt={author.name}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <span className="flex h-full w-full items-center justify-center">
-                            {author.name
-                              .charAt(0)
-                              .toUpperCase()}
-                          </span>
-                        )}
-                      </button>
-
-                      <button
-                        onClick={() =>
-                          router.push(
-                            isOwner
-                              ? "/profile"
-                              : `/profile?user=${post.user_id}`
-                          )
-                        }
-                        className="text-left"
-                      >
-                        <p className="font-semibold">
-                          {author.name}
-                        </p>
-
-                        <p className="text-xs text-white/35">
-                          {formatDate(post.created_at)}
-                        </p>
-                      </button>
-
-                    </div>
-
-                    {/* POST MENU */}
-                    <div className="relative">
-
-                      <button
-                        onClick={() =>
-                          setOpenMenu(
-                            openMenu === post.id
-                              ? null
-                              : post.id
-                          )
-                        }
-                        className="flex h-9 w-9 items-center justify-center rounded-full text-xl text-white/50 hover:bg-white/5 hover:text-white"
-                        aria-label="Post menu"
-                      >
-                        ⋯
-                      </button>
-
-                      {openMenu === post.id && (
-                        <div className="absolute right-0 top-10 z-20 w-44 overflow-hidden rounded-2xl border border-white/10 bg-[#11152b] shadow-2xl">
-
-                          <button
-                            onClick={() =>
-                              handleShare(post)
-                            }
-                            className="block w-full px-4 py-3 text-left text-sm hover:bg-white/5"
-                          >
-                            Share post
-                          </button>
-
-                          {isOwner ? (
-                            <button
-                              onClick={() =>
-                                handleDeletePost(post.id)
-                              }
-                              disabled={
-                                deletingPost === post.id
-                              }
-                              className="block w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-white/5"
-                            >
-                              {deletingPost === post.id
-                                ? "Deleting..."
-                                : "Delete post"}
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() =>
-                                handleReportPost(post.id)
-                              }
-                              className="block w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-white/5"
-                            >
-                              Report post
-                            </button>
-                          )}
-
-                        </div>
-                      )}
-
-                    </div>
-                  </div>
-
-                  {/* POST CONTENT */}
-                  <div className="px-4 pb-4">
-                    <p className="whitespace-pre-wrap break-words text-[15px] leading-7 text-white/85">
-                      {post.content}
-                    </p>
-                  </div>
-
-                  {/* POST STATS */}
-                  {(postLikes.length > 0 ||
-                    postComments.length > 0) && (
-                    <div className="flex items-center justify-between border-t border-white/5 px-4 py-3 text-xs text-white/35">
-
-                      <span>
-                        {postLikes.length > 0
-                          ? `${postLikes.length} ${
-                              postLikes.length === 1
-                                ? "like"
-                                : "likes"
-                            }`
-                          : ""}
-                      </span>
-
-                      <button
-                        onClick={() =>
-                          setOpenComments((current) => ({
-                            ...current,
-                            [post.id]:
-                              !current[post.id],
-                          }))
-                        }
-                        className="hover:text-white/70"
-                      >
-                        {postComments.length}{" "}
-                        {postComments.length === 1
-                          ? "comment"
-                          : "comments"}
-                      </button>
-
-                    </div>
-                  )}
-
-                  {/* ACTIONS */}
-                  <div className="grid grid-cols-3 border-t border-white/10">
-
-                    {/* LIKE */}
-                    <button
-                      onClick={() =>
-                        toggleLike(post.id)
-                      }
-                      className={`flex items-center justify-center gap-2 py-3 text-sm transition hover:bg-white/5 ${
-                        likedByUser
-                          ? "text-pink-400"
-                          : "text-white/50"
-                      }`}
-                    >
-                      <span>
-                        {likedByUser ? "♥" : "♡"}
-                      </span>
-
-                      <span>Like</span>
-                    </button>
-
-                    {/* COMMENT */}
-                    <button
-                      onClick={() =>
-                        setOpenComments((current) => ({
-                          ...current,
-                          [post.id]:
-                            !current[post.id],
-                        }))
-                      }
-                      className="flex items-center justify-center gap-2 py-3 text-sm text-white/50 transition hover:bg-white/5 hover:text-white"
-                    >
-                      <span>💬</span>
-                      <span>Comment</span>
-                    </button>
-
-                    {/* SHARE */}
-                    <button
-                      onClick={() =>
-                        handleShare(post)
-                      }
-                      className="flex items-center justify-center gap-2 py-3 text-sm text-white/50 transition hover:bg-white/5 hover:text-white"
-                    >
-                      <span>↗</span>
-                      <span>Share</span>
-                    </button>
-
-                  </div>
-
-                  {/* COMMENTS */}
-                  {openComments[post.id] && (
-                    <div className="border-t border-white/10 bg-black/10 px-4 py-4">
-
-                      <div className="space-y-3">
-
-                        {postComments.length === 0 ? (
-                          <p className="text-xs text-white/30">
-                            No comments yet. Start the conversation.
-                          </p>
-                        ) : (
-                          postComments.map((comment) => {
-
-                            const commentProfile =
-                              profiles[comment.user_id];
-
-                            const commentName =
-                              comment.user_id === userId
-                                ? userName
-                                : commentProfile?.full_name ||
-                                  commentProfile?.username ||
-                                  "Nikelink User";
-
-                            return (
-                              <div
-                                key={comment.id}
-                                className="flex gap-3"
-                              >
-
-                                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-blue-500/60 to-violet-500/60 text-xs font-bold">
-
-                                  {comment.user_id ===
-                                    userId &&
-                                  avatarUrl ? (
-                                    <img
-                                      src={avatarUrl}
-                                      alt={commentName}
-                                      className="h-full w-full object-cover"
-                                    />
-                                  ) : commentProfile?.avatar_url ? (
-                                    <img
-                                      src={
-                                        commentProfile.avatar_url
-                                      }
-                                      alt={commentName}
-                                      className="h-full w-full object-cover"
-                                    />
-                                  ) : (
-                                    commentName
-                                      .charAt(0)
-                                      .toUpperCase()
-                                  )}
-
-                                </div>
-
-                                <div className="min-w-0 flex-1 rounded-2xl bg-white/5 px-3 py-2">
-
-                                  <p className="text-xs font-bold">
-                                    {commentName}
-                                  </p>
-
-                                  <p className="mt-1 whitespace-pre-wrap break-words text-sm text-white/70">
-                                    {comment.content}
-                                  </p>
-
-                                </div>
-
-                              </div>
-                            );
-                          })
-                        )}
-
-                      </div>
-
-                      {/* COMMENT INPUT */}
-                      <div className="mt-4 flex gap-2">
-
-                        <input
-                          value={
-                            commentText[post.id] || ""
-                          }
-                          onChange={(e) =>
-                            setCommentText((current) => ({
-                              ...current,
-                              [post.id]:
-                                e.target.value,
-                            }))
-                          }
-                          onKeyDown={(e) => {
-                            if (
-                              e.key === "Enter" &&
-                              !e.shiftKey
-                            ) {
-                              e.preventDefault();
-                              submitComment(post.id);
-                            }
-                          }}
-                          placeholder="Write a comment..."
-                          className="min-w-0 flex-1 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-violet-400/50"
-                        />
-
-                        <button
-                          onClick={() =>
-                            submitComment(post.id)
-                          }
-                          disabled={
-                            submittingComment ===
-                              post.id ||
-                            !(commentText[post.id] || "").trim()
-                          }
-                          className="rounded-full bg-gradient-to-r from-blue-500 to-violet-600 px-4 py-2 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          {submittingComment ===
-                          post.id
-                            ? "..."
-                            : "Send"}
-                        </button>
-
-                      </div>
-
-                    </div>
-                  )}
-
-                </article>
-              );
-            })
-          )}
-
-        </section>
-
-      </div>
-
-      {/* STANDARD NIKELINK BOTTOM NAVIGATION */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#050816]/95 shadow-[0_-10px_40px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
-
-        <div className="mx-auto grid max-w-3xl grid-cols-4 px-2 py-2">
-
-          {/* HOME */}
-          <button
-            onClick={() => router.push("/feed")}
-            className="flex min-h-[58px] flex-col items-center justify-center gap-1 rounded-2xl text-blue-400"
-          >
-            <span className="text-xl leading-none">
-              🏠
-            </span>
-
-            <span className="text-[11px] font-semibold">
-              Home
-            </span>
-          </button>
-
-          {/* DISCOVER */}
-          <button
-            onClick={() => router.push("/discover")}
-            className="flex min-h-[58px] flex-col items-center justify-center gap-1 rounded-2xl text-white/45 transition hover:bg-white/5 hover:text-white"
-          >
-            <span className="text-xl leading-none">
-              🔎
-            </span>
-
-            <span className="text-[11px] font-semibold">
-              Discover
-            </span>
-          </button>
-
-          {/* COMMUNITY */}
-          <button
-            onClick={() => router.push("/communities")}
-            className="flex min-h-[58px] flex-col items-center justify-center gap-1 rounded-2xl text-white/45 transition hover:bg-white/5 hover:text-white"
-          >
-            <span className="text-xl leading-none">
-              👥
-            </span>
-
-            <span className="text-[11px] font-semibold">
-              Community
-            </span>
-          </button>
-
-          {/* MESSAGES */}
-          <button
-            onClick={() => router.push("/messages")}
-            className="flex min-h-[58px] flex-col items-center justify-center gap-1 rounded-2xl text-white/45 transition hover:bg-white/5 hover:text-white"
-          >
-            <span className="text-xl leading-none">
-              💬
-            </span>
-
-            <span className="text-[11px] font-semibold">
-              Messages
-            </span>
-          </button>
-
+                return (
+                  <article
+                    key={post.id}
+                    className="relative overflow-visible rounded-3xl border border-white/10 bg-white/[0.04] shadow-xl shadow-black/20"
+                  >
+                    {/* POST HEADER */}
+<div className="flex items-center justify-between p-4">
+  <div className="flex items-center gap-3">
+    <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-blue-500 via-violet-500 to-pink-500 font-bold">
+      {author.avatar_url ? (
+        <img
+          src={author.avatar_url}
+          alt={
+            author.full_name ||
+            author.username ||
+            "Nikelink User"
+          }
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center">
+          {(
+            author.full_name ||
+            author.username ||
+            "N"
+          )
+            .charAt(0)
+            .toUpperCase()}
         </div>
-      </nav>
+      )}
+    </div>
 
-    </main>
-  );
+    <div>
+      <p className="text-sm font-semibold">
+        {author.full_name ||
+          author.username ||
+          "Nikelink User"}
+      </p>
+
+      {author.username && (
+        <p className="text-xs text-white/30">
+          @{author.username}
+        </p>
+      )}
+
+      <p className="text-xs text-white/35">
+        {formatDate(post.created_at)}
+      </p>
+    </div>
+  </div>
+
+  {/* THREE DOT MENU */}
+  <div className="relative">
+    <button
+      onClick={() =>
+        setOpenMenu(
+          openMenu === post.id
+            ? null
+            : post.id
+        )
+      }
+      aria-label="Post menu"
+      className="flex h-9 w-9 items-center justify-center rounded-full text-xl text-white/50 transition hover:bg-white/10 hover:text-white"
+    >
+      ⋯
+    </button>
+
+    {openMenu === post.id && (
+      <div className="absolute right-0 top-11 z-30 w-48 overflow-hidden rounded-2xl border border-white/10 bg-[#101426] shadow-2xl shadow-black/50">
+        <button
+          onClick={() => {
+            setOpenMenu(null);
+            handleShare(post);
+          }}
+          className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition hover:bg-white/10"
+        >
+          <span>↗️</span>
+          <span>Share post</span>
+        </button>
+
+        {isOwnPost ? (
+          <button
+            onClick={() =>
+              handleDeletePost(post.id)
+            }
+            disabled={
+              deletingPost === post.id
+            }
+            className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-red-400 transition hover:bg-red-500/10"
+          >
+            <span>🗑️</span>
+
+            <span>
+              {deletingPost === post.id
+                ? "Deleting..."
+                : "Delete post"}
+            </span>
+          </button>
+        ) : (
+          <button
+            onClick={() =>
+              handleReportPost(post.id)
+            }
+            className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition hover:bg-white/10"
+          >
+            <span>⚑</span>
+            <span>Report post</span>
+          </button>
+        )}
+      </div>
+    )}
+  </div>
+</div>
+
+{/* POST CONTENT */}
+<div className="px-4 pb-4">
+  <p className="whitespace-pre-wrap text-[15px] leading-7 text-white/90">
+    {post.content}
+  </p>
+</div>
+
+{/* ACTIONS */}
+<div className="border-t border-white/10 px-3 py-2">
+  <div className="flex items-center justify-between">
+    <div className="flex items-center gap-1">
+
+      {/* LIKE */}
+      <button
+        onClick={() =>
+          toggleLike(post.id)
+        }
+        className={`flex items-center gap-2 rounded-full px-3 py-2 text-sm transition ${
+          userLiked
+            ? "bg-pink-500/10 text-pink-400"
+            : "text-white/50 hover:bg-white/5 hover:text-pink-400"
+        }`}
+      >
+        <span className="text-lg">
+          {userLiked ? "❤️" : "♡"}
+        </span>
+
+        <span>
+          {postLikes.length}
+        </span>
+      </button>
+
+      {/* COMMENTS */}
+      <button
+        onClick={() =>
+          setOpenComments(
+            (current) => ({
+              ...current,
+              [post.id]:
+                !current[post.id],
+            })
+          )
+        }
+        className="flex items-center gap-2 rounded-full px-3 py-2 text-sm text-white/50 transition hover:bg-white/5 hover:text-blue-400"
+      >
+        <span className="text-lg">
+          💬
+        </span>
+
+        <span>
+          {postComments.length}
+        </span>
+      </button>
+
+      {/* SHARE */}
+      <button
+        onClick={() =>
+          handleShare(post)
+        }
+        className="flex items-center gap-2 rounded-full px-3 py-2 text-sm text-white/50 transition hover:bg-white/5 hover:text-violet-400"
+      >
+        <span className="text-lg">
+          ↗
+        </span>
+
+        <span className="hidden sm:inline">
+          Share
+        </span>
+      </button>
+    </div>
+  </div>
+</div>
+
+{/* COMMENTS */}
+{openComments[post.id] && (
+  <div className="border-t border-white/10 px-4 pb-4 pt-3">
+
+    <div className="space-y-3">
+      {postComments.length === 0 ? (
+        <p className="py-2 text-center text-xs text-white/30">
+          No comments yet.
+        </p>
+      ) : (
+        postComments.map((comment) => (
+          <div
+            key={comment.id}
+            className="flex gap-3"
+          >
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 text-xs font-bold">
+              N
+            </div>
+
+            <div className="min-w-0 flex-1 rounded-2xl bg-white/[0.05] px-3 py-2">
+              <p className="text-xs font-semibold text-white">
+                Nikelink User
+              </p>
+
+              <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-white/75">
+                {comment.content}
+              </p>
+
+              <p className="mt-1 text-[10px] text-white/25">
+                {formatDate(
+                  comment.created_at
+                )}
+              </p>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+
+    {/* COMMENT INPUT */}
+    <div className="mt-4 flex gap-2">
+      <input
+        value={
+          commentText[post.id] || ""
+        }
+        onChange={(e) =>
+          setCommentText(
+            (current) => ({
+              ...current,
+              [post.id]:
+                e.target.value,
+            })
+          )
+        }
+        onKeyDown={(e) => {
+          if (
+            e.key === "Enter" &&
+            !e.shiftKey
+          ) {
+            e.preventDefault();
+
+            if (
+              (
+                commentText[
+                  post.id
+                ] || ""
+              ).trim()
+            ) {
+              submitComment(
+                post.id
+              );
+            }
+          }
+        }}
+        placeholder="Write a comment..."
+        maxLength={500}
+        className="min-w-0 flex-1 rounded-full border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-blue-500/40"
+      />
+
+      <button
+        type="button"
+        onClick={() =>
+          submitComment(post.id)
+        }
+        disabled={
+          submittingComment ===
+            post.id ||
+          !(
+            commentText[
+              post.id
+            ] || ""
+          ).trim()
+        }
+        className="rounded-full bg-blue-600 px-4 py-2 text-sm font-bold transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-30"
+      >
+        {submittingComment ===
+        post.id
+          ? "..."
+          : "Send"}
+      </button>
+    </div>
+  </div>
+)}
+</article>
+);
+})
+)}
+</div>
+</div>
+
+{/* MOBILE NAVIGATION */}
+<nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#050816]/95 backdrop-blur-xl">
+  <div className="mx-auto flex max-w-3xl items-center justify-around px-2 py-2">
+
+    {/* HOME */}
+    <button
+      onClick={() =>
+        router.push("/feed")
+      }
+      className="flex min-w-[60px] flex-col items-center gap-1 px-3 py-2 text-blue-400"
+    >
+      <span className="text-xl">
+        🏠
+      </span>
+
+      <span className="text-[10px] font-medium">
+        Home
+      </span>
+    </button>
+
+    {/* DISCOVER */}
+    <button
+      onClick={() =>
+        router.push("/discover")
+      }
+      className="flex min-w-[60px] flex-col items-center gap-1 px-3 py-2 text-white/40 transition hover:text-white"
+    >
+      <span className="text-xl">
+        🔎
+      </span>
+
+      <span className="text-[10px] font-medium">
+        Discover
+      </span>
+    </button>
+
+    {/* CREATE */}
+    <button
+      onClick={() => {
+        const textarea =
+          document.querySelector(
+            "textarea"
+          ) as HTMLTextAreaElement | null;
+
+        if (textarea) {
+          textarea.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+
+          setTimeout(() => {
+            textarea.focus();
+          }, 400);
+        }
+      }}
+      aria-label="Create post"
+      className="flex h-12 w-12 -translate-y-3 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 text-2xl font-bold shadow-xl shadow-blue-500/30 transition hover:scale-105"
+    >
+      +
+    </button>
+
+    {/* NOTIFICATIONS */}
+    <button
+      onClick={() =>
+        router.push(
+          "/notifications"
+        )
+      }
+      className="flex min-w-[60px] flex-col items-center gap-1 px-3 py-2 text-white/40 transition hover:text-white"
+    >
+      <span className="text-xl">
+        🔔
+      </span>
+
+      <span className="text-[10px] font-medium">
+        Alerts
+      </span>
+    </button>
+
+    {/* PROFILE */}
+    <button
+      onClick={() =>
+        router.push("/profile")
+      }
+      className="flex min-w-[60px] flex-col items-center gap-1 px-3 py-2 text-white/40 transition hover:text-white"
+    >
+      <span className="text-xl">
+        👤
+      </span>
+
+      <span className="text-[10px] font-medium">
+        Profile
+      </span>
+    </button>
+
+  </div>
+</nav>
+</main>
+);
 }
