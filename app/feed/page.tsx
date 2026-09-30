@@ -120,7 +120,18 @@ useEffect(() => {
     setUserId(currentUserId);
 
     const { data: profile } =
-      await supabase
+const { count } = await supabase
+  .from("notification")
+  .select("*", {
+    count: "exact",
+    head: true,
+  })
+  .eq("user_id", currentUserId)
+  .eq("is_read", false);
+
+setUnreadNotifications(
+  count || 0
+);      await supabase
         .from("profiles")
         .select(
           "id, full_name, username, avatar_url, interests"
