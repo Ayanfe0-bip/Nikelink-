@@ -1684,25 +1684,18 @@ useEffect(() => {
           </button>
 
           {/* CREATE */}
-          <button
-            onClick={() => {
-  window.scrollTo({
-    top: 0,
-    behavior: "smooth",
-  });
-}}
-
-                setTimeout(() => {
-                  textarea.focus();
-                }, 400);
-              }
-            }}
-            aria-label="Create post"
-            className="flex h-12 w-12 -translate-y-3 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 text-2xl font-bold shadow-xl shadow-blue-500/30 transition hover:scale-105"
-          >
-            +
-          </button>
-
+         <button
+  onClick={() => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }}
+  aria-label="Create post"
+  className="flex h-12 w-12 -translate-y-3 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 text-2xl font-bold shadow-xl shadow-blue-500/30 transition hover:scale-105"
+>
+  +
+</button>
                 {/* NOTIFICATIONS */}
       <button
         onClick={() =>
