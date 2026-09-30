@@ -38,6 +38,8 @@ export default function FeedPage() {
   const router = useRouter();
 
   const [userId, setUserId] = useState("");
+  const [highlightedPostId, setHighlightedPostId] =
+  useState<string | null>(null);
   const [userName, setUserName] =
     useState("Nikelink User");
   const [avatarUrl, setAvatarUrl] = useState("");
@@ -88,7 +90,17 @@ export default function FeedPage() {
   useEffect(() => {
     loadFeed();
   }, []);
+useEffect(() => {
+  const params = new URLSearchParams(
+    window.location.search
+  );
 
+  const postId = params.get("post");
+
+  if (postId) {
+    setHighlightedPostId(postId);
+  }
+}, []);
   async function loadFeed() {
     const {
       data: userData,
