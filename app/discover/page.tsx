@@ -1227,9 +1227,11 @@ async function toggleFollow(profileId: string) {
     aria-label="Open profile"
   >
     👤
-  </button>
-</div>
-
+        </button>
+        </div>
+       </div>
+      </div>
+    </header>
           {/* SEARCH */}
           <div className="mt-6 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.045] px-4 shadow-inner">
             <span className="text-lg text-white/40">
