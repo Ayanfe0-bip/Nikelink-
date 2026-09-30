@@ -1218,18 +1218,16 @@ async function toggleFollow(profileId: string) {
       </span>
     )}
   </button>
-
-  <button
-    onClick={() =>
-      router.push("/profile")
-    }
-    className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-lg shadow-lg transition hover:bg-white/10"
-    aria-label="Open profile"
-  >
-    👤
-        </button>
+<button
+  onClick={() =>
+    router.push("/profile")
+  }
+  className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-lg shadow-lg transition hover:bg-white/10"
+  aria-label="Open profile"
+>
+  👤
+</button>
         </div>
-       </div>
       </div>
     </header>
           {/* SEARCH */}
