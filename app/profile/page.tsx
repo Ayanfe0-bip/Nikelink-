@@ -30,6 +30,8 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [userId, setUserId] = useState("");
+  const [unreadNotifications, setUnreadNotifications] =
+  useState(0);
   const [email, setEmail] = useState("");
 
   const [fullName, setFullName] = useState("");
@@ -82,6 +84,28 @@ export default function ProfilePage() {
     loadProfile();
   }, [router]);
 
+useEffect(() => {
+  if (!userId) return;
+
+  const loadUnreadNotifications = async () => {
+    const { count, error } = await supabase
+      .from("notification")
+      .select("*", {
+        count: "exact",
+        head: true,
+      })
+      .eq("user_id", userId)
+      .eq("is_read", false);
+
+    if (!error) {
+      setUnreadNotifications(count || 0);
+    }
+  };
+
+  loadUnreadNotifications();
+}, [userId]);
+
+  function toggleInterest(interest: string) {
   function toggleInterest(interest: string) {
     setInterests((current) =>
       current.includes(interest)
