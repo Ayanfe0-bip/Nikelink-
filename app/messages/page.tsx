@@ -46,19 +46,34 @@ export default function MessagesPage() {
   const router = useRouter();
 
   const [userId, setUserId] = useState("");
+
   const [unreadNotifications, setUnreadNotifications] =
-  useState(0);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [selected, setSelected] = useState<Profile | null>(null);
+    useState(0);
+
+  const [unreadMessages, setUnreadMessages] =
+    useState(0);
+
+  const [profiles, setProfiles] =
+    useState<Profile[]>([]);
+
+  const [messages, setMessages] =
+    useState<Message[]>([]);
+
+  const [selected, setSelected] =
+    useState<Profile | null>(null);
+
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [search, setSearch] = useState("");
 
+  /*
+   * LOAD USER, CONNECTIONS AND MESSAGES
+   */
   useEffect(() => {
     async function load() {
-      const { data } = await supabase.auth.getUser();
+      const { data } =
+        await supabase.auth.getUser();
 
       if (!data.user) {
         router.replace("/login");
@@ -66,91 +81,157 @@ export default function MessagesPage() {
       }
 
       const id = data.user.id;
+
       setUserId(id);
 
-      const { data: connections } = await supabase
-        .from("connections")
-        .select("requester_id, receiver_id")
-        .eq("status", "accepted")
-        .or(`requester_id.eq.${id},receiver_id.eq.${id}`);
+      /*
+       * LOAD ACCEPTED CONNECTIONS
+       */
+      const { data: connections } =
+        await supabase
+          .from("connections")
+          .select(
+            "requester_id, receiver_id"
+          )
+          .eq("status", "accepted")
+          .or(
+            `requester_id.eq.${id},receiver_id.eq.${id}`
+          );
 
-      const ids = (connections || []).map((connection) =>
+      const ids = (
+        connections || []
+      ).map((connection) =>
         connection.requester_id === id
           ? connection.receiver_id
           : connection.requester_id
       );
 
+      /*
+       * LOAD CONNECTED PROFILES
+       */
       if (ids.length) {
-        const { data: people } = await supabase
-          .from("profiles")
-          .select("id, full_name, username, country")
-          .in("id", ids);
+        const { data: people } =
+          await supabase
+            .from("profiles")
+            .select(
+              "id, full_name, username, country"
+            )
+            .in("id", ids);
 
         setProfiles(people || []);
       }
 
-      const { data: msgs } = await supabase
-        .from("messages")
-        .select("id, sender_id, receiver_id, content, created_at")
-        .or(`sender_id.eq.${id},receiver_id.eq.${id}`)
-        .order("created_at", { ascending: true });
+      /*
+       * LOAD MESSAGES
+       */
+      const { data: msgs } =
+        await supabase
+          .from("messages")
+          .select(
+            "id, sender_id, receiver_id, content, created_at"
+          )
+          .or(
+            `sender_id.eq.${id},receiver_id.eq.${id}`
+          )
+          .order("created_at", {
+            ascending: true,
+          });
 
       setMessages(msgs || []);
+
       setLoading(false);
     }
 
     load();
   }, [router]);
-useEffect(() => {
-  if (!userId) return;
 
-  const loadUnreadNotifications = async () => {
-    const { count, error } = await supabase
-      .from("notification")
-      .select("*", {
-        count: "exact",
-        head: true,
-      })
-      .eq("user_id", userId)
-      .eq("is_read", false);
-
-    if (!error) {
-      setUnreadNotifications(count || 0);
-    }
-  };
-
-  loadUnreadNotifications();
-}, [userId]);
+  /*
+   * LOAD UNREAD NOTIFICATIONS
+   */
   useEffect(() => {
-  if (!userId) return;
+    if (!userId) return;
 
-  const channel = supabase
-    .channel(`messages-notifications-${userId}`)
-    .on(
-      "postgres_changes",
-      {
-        event: "INSERT",
-        schema: "public",
-        table: "notification",
-        filter: `user_id=eq.${userId}`,
-      },
-      () => {
-        setUnreadNotifications(
-          (current) => current + 1
-        );
-      }
-    )
-    .subscribe();
+    const loadUnreadNotifications =
+      async () => {
+        const { count, error } =
+          await supabase
+            .from("notification")
+            .select("*", {
+              count: "exact",
+              head: true,
+            })
+            .eq("user_id", userId)
+            .eq("is_read", false);
 
-  return () => {
-    supabase.removeChannel(channel);
-  };
-}, [userId]);
+        if (!error) {
+          setUnreadNotifications(
+            count || 0
+          );
+        }
+      };
+
+    loadUnreadNotifications();
+  }, [userId]);
+
+  /*
+   * REALTIME NOTIFICATION BADGE
+   */
   useEffect(() => {
     if (!userId) return;
 
     const channel = supabase
-      .channel(`nikelink-messages-${userId}`)
+      .channel(
+        `messages-notifications-${userId}`
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notification",
+          filter: `user_id=eq.${userId}`,
+        },
+        () => {
+          setUnreadNotifications(
+            (current) => current + 1
+          );
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId]);
+
+  /*
+   * LOAD UNREAD MESSAGE COUNT
+   */
+  useEffect(() => {
+    if (!userId) return;
+
+    const storedUnread =
+      localStorage.getItem(
+        `nikelink-unread-messages-${userId}`
+      );
+
+    if (storedUnread) {
+      setUnreadMessages(
+        Number(storedUnread) || 0
+      );
+    }
+  }, [userId]);
+
+  /*
+   * REALTIME MESSAGES
+   */
+  useEffect(() => {
+    if (!userId) return;
+
+    const channel = supabase
+      .channel(
+        `nikelink-messages-${userId}`
+      )
       .on(
         "postgres_changes",
         {
@@ -159,19 +240,49 @@ useEffect(() => {
           table: "messages",
         },
         (payload) => {
-          const message = payload.new as Message;
+          const message =
+            payload.new as Message;
 
           if (
             message.sender_id === userId ||
             message.receiver_id === userId
           ) {
             setMessages((old) => {
-              if (old.some((item) => item.id === message.id)) {
+              if (
+                old.some(
+                  (item) =>
+                    item.id === message.id
+                )
+              ) {
                 return old;
               }
 
               return [...old, message];
             });
+
+            /*
+             * Count incoming messages.
+             *
+             * We only count messages where
+             * the current user is the receiver.
+             */
+            if (
+              message.receiver_id === userId
+            ) {
+              setUnreadMessages(
+                (current) => {
+                  const next =
+                    current + 1;
+
+                  localStorage.setItem(
+                    `nikelink-unread-messages-${userId}`,
+                    String(next)
+                  );
+
+                  return next;
+                }
+              );
+            }
           }
         }
       )
@@ -182,66 +293,140 @@ useEffect(() => {
     };
   }, [userId]);
 
-  const filteredProfiles = useMemo(() => {
-    const value = search.trim().toLowerCase();
+  /*
+   * SEARCH CONNECTIONS
+   */
+  const filteredProfiles =
+    useMemo(() => {
+      const value =
+        search.trim().toLowerCase();
 
-    if (!value) return profiles;
+      if (!value) return profiles;
 
-    return profiles.filter((profile) => {
-      const fullName = profile.full_name?.toLowerCase() || "";
-      const username = profile.username?.toLowerCase() || "";
-      const country = profile.country?.toLowerCase() || "";
+      return profiles.filter(
+        (profile) => {
+          const fullName =
+            profile.full_name?.toLowerCase() ||
+            "";
 
-      return (
-        fullName.includes(value) ||
-        username.includes(value) ||
-        country.includes(value)
+          const username =
+            profile.username?.toLowerCase() ||
+            "";
+
+          const country =
+            profile.country?.toLowerCase() ||
+            "";
+
+          return (
+            fullName.includes(value) ||
+            username.includes(value) ||
+            country.includes(value)
+          );
+        }
       );
-    });
-  }, [profiles, search]);
+    }, [profiles, search]);
 
-  const conversation = useMemo(() => {
-    if (!selected) return [];
+  /*
+   * CURRENT CONVERSATION
+   */
+  const conversation =
+    useMemo(() => {
+      if (!selected) return [];
 
-    return messages.filter(
-      (message) =>
-        (message.sender_id === userId &&
-          message.receiver_id === selected.id) ||
-        (message.sender_id === selected.id &&
-          message.receiver_id === userId)
-    );
-  }, [messages, selected, userId]);
+      return messages.filter(
+        (message) =>
+          (message.sender_id ===
+            userId &&
+            message.receiver_id ===
+              selected.id) ||
+          (message.sender_id ===
+            selected.id &&
+            message.receiver_id ===
+              userId)
+      );
+    }, [
+      messages,
+      selected,
+      userId,
+    ]);
 
+  /*
+   * LAST MESSAGE
+   */
   function lastMessage(id: string) {
     const list = messages.filter(
       (message) =>
-        (message.sender_id === userId && message.receiver_id === id) ||
-        (message.sender_id === id && message.receiver_id === userId)
+        (message.sender_id ===
+          userId &&
+          message.receiver_id === id) ||
+        (message.sender_id === id &&
+          message.receiver_id ===
+            userId)
     );
 
     return list[list.length - 1];
   }
 
-  async function sendMessage() {
-    const content = text.trim();
+  /*
+   * OPEN CONVERSATION
+   */
+  function openConversation(
+    profile: Profile
+  ) {
+    setSelected(profile);
 
-    if (!content || !selected || !userId || sending) return;
+    /*
+     * Clear unread message badge when
+     * entering the messaging area.
+     */
+    setUnreadMessages(0);
+
+    if (userId) {
+      localStorage.setItem(
+        `nikelink-unread-messages-${userId}`,
+        "0"
+      );
+    }
+  }
+
+  /*
+   * SEND MESSAGE
+   */
+  async function sendMessage() {
+    const content =
+      text.trim();
+
+    if (
+      !content ||
+      !selected ||
+      !userId ||
+      sending
+    ) {
+      return;
+    }
 
     setSending(true);
 
-    const { data, error } = await supabase
-      .from("messages")
-      .insert({
-        sender_id: userId,
-        receiver_id: selected.id,
-        content,
-      })
-      .select()
-      .single();
+    const { data, error } =
+      await supabase
+        .from("messages")
+        .insert({
+          sender_id: userId,
+          receiver_id:
+            selected.id,
+          content,
+        })
+        .select()
+        .single();
 
     if (!error && data) {
       setMessages((old) => {
-        if (old.some((message) => message.id === data.id)) {
+        if (
+          old.some(
+            (message) =>
+              message.id === data.id
+          )
+        ) {
           return old;
         }
 
@@ -254,29 +439,50 @@ useEffect(() => {
     setSending(false);
   }
 
+  /*
+   * FORMAT MESSAGE TIME
+   */
   function time(value: string) {
-    return new Date(value).toLocaleTimeString([], {
+    return new Date(
+      value
+    ).toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
     });
   }
 
+  /*
+   * PROFILE NAME
+   */
   function name(profile: Profile) {
-    return profile.full_name || profile.username || "Nikelink User";
+    return (
+      profile.full_name ||
+      profile.username ||
+      "Nikelink User"
+    );
   }
 
-  function initials(profile: Profile) {
-    const value = name(profile).trim();
+  /*
+   * PROFILE INITIALS
+   */
+  function initials(
+    profile: Profile
+  ) {
+    const value =
+      name(profile).trim();
 
     if (!value) return "N";
 
-    const parts = value.split(/\s+/);
+    const parts =
+      value.split(/\s+/);
 
     if (parts.length >= 2) {
       return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
     }
 
-    return value.slice(0, 2).toUpperCase();
+    return value
+      .slice(0, 2)
+      .toUpperCase();
   }
 
   return (
@@ -284,6 +490,7 @@ useEffect(() => {
       {/* Background glow */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute left-[-120px] top-[-120px] h-72 w-72 rounded-full bg-violet-600/10 blur-[100px]" />
+
         <div className="absolute bottom-[-120px] right-[-120px] h-80 w-80 rounded-full bg-pink-600/10 blur-[110px]" />
       </div>
 
@@ -300,21 +507,28 @@ useEffect(() => {
             </h1>
           </div>
 
+          {/* Notifications */}
           <button
-  onClick={() => router.push("/notifications")}
-  aria-label="Notifications"
-  className="relative flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-lg transition hover:bg-white/10"
->
-  🔔
+            onClick={() =>
+              router.push(
+                "/notifications"
+              )
+            }
+            aria-label="Notifications"
+            className="relative flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-lg transition hover:bg-white/10"
+          >
+            🔔
 
-  {unreadNotifications > 0 && (
-    <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-pink-500 px-1 text-[10px] font-black text-white shadow-lg shadow-pink-500/30">
-      {unreadNotifications > 99
-        ? "99+"
-        : unreadNotifications}
-    </span>
-  )}
-</button>
+            {unreadNotifications >
+              0 && (
+              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-pink-500 px-1 text-[10px] font-black text-white shadow-lg shadow-pink-500/30">
+                {unreadNotifications >
+                99
+                  ? "99+"
+                  : unreadNotifications}
+              </span>
+            )}
+          </button>
         </div>
       </header>
 
@@ -322,7 +536,9 @@ useEffect(() => {
         {/* Conversation list */}
         <aside
           className={`w-full border-r border-white/10 bg-white/[0.015] md:block md:w-[350px] ${
-            selected ? "hidden" : "block"
+            selected
+              ? "hidden"
+              : "block"
           }`}
         >
           <div className="border-b border-white/10 p-4">
@@ -343,7 +559,11 @@ useEffect(() => {
 
               <input
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(event) =>
+                  setSearch(
+                    event.target.value
+                  )
+                }
                 placeholder="Search conversations"
                 className="w-full rounded-2xl border border-white/10 bg-white/5 py-3 pl-10 pr-4 text-sm text-white outline-none placeholder:text-white/25 focus:border-violet-500/60 focus:bg-white/[0.07]"
               />
@@ -352,28 +572,34 @@ useEffect(() => {
 
           {loading ? (
             <div className="space-y-3 p-4">
-              {[1, 2, 3, 4].map((item) => (
-                <div
-                  key={item}
-                  className="flex animate-pulse gap-3 rounded-2xl border border-white/5 bg-white/[0.03] p-4"
-                >
-                  <div className="h-12 w-12 rounded-full bg-white/10" />
+              {[1, 2, 3, 4].map(
+                (item) => (
+                  <div
+                    key={item}
+                    className="flex animate-pulse gap-3 rounded-2xl border border-white/5 bg-white/[0.03] p-4"
+                  >
+                    <div className="h-12 w-12 rounded-full bg-white/10" />
 
-                  <div className="flex-1 space-y-2">
-                    <div className="h-3 w-28 rounded bg-white/10" />
-                    <div className="h-3 w-40 rounded bg-white/5" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3 w-28 rounded bg-white/10" />
+
+                      <div className="h-3 w-40 rounded bg-white/5" />
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              )}
             </div>
-          ) : filteredProfiles.length === 0 ? (
+          ) : filteredProfiles.length ===
+            0 ? (
             <div className="px-8 py-16 text-center">
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl border border-white/10 bg-white/5 text-2xl">
                 💬
               </div>
 
               <h2 className="mt-5 font-semibold">
-                {search ? "No conversations found" : "No connections yet"}
+                {search
+                  ? "No conversations found"
+                  : "No connections yet"}
               </h2>
 
               <p className="mt-2 text-sm leading-6 text-white/35">
@@ -384,7 +610,11 @@ useEffect(() => {
 
               {!search && (
                 <button
-                  onClick={() => router.push("/discover")}
+                  onClick={() =>
+                    router.push(
+                      "/discover"
+                    )
+                  }
                   className="mt-5 rounded-xl bg-gradient-to-r from-violet-600 to-pink-500 px-5 py-3 text-sm font-bold"
                 >
                   Discover people
@@ -393,52 +623,71 @@ useEffect(() => {
             </div>
           ) : (
             <div className="p-2">
-              {filteredProfiles.map((profile) => {
-                const last = lastMessage(profile.id);
-                const active = selected?.id === profile.id;
+              {filteredProfiles.map(
+                (profile) => {
+                  const last =
+                    lastMessage(
+                      profile.id
+                    );
 
-                return (
-                  <button
-                    key={profile.id}
-                    onClick={() => setSelected(profile)}
-                    className={`mb-1 flex w-full gap-3 rounded-2xl p-3 text-left transition ${
-                      active
-                        ? "border border-violet-500/30 bg-violet-500/10"
-                        : "border border-transparent hover:bg-white/5"
-                    }`}
-                  >
-                    <div className="relative shrink-0">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 via-blue-500 to-pink-500 text-sm font-bold shadow-lg shadow-violet-900/20">
-                        {initials(profile)}
+                  const active =
+                    selected?.id ===
+                    profile.id;
+
+                  return (
+                    <button
+                      key={profile.id}
+                      onClick={() =>
+                        openConversation(
+                          profile
+                        )
+                      }
+                      className={`mb-1 flex w-full gap-3 rounded-2xl p-3 text-left transition ${
+                        active
+                          ? "border border-violet-500/30 bg-violet-500/10"
+                          : "border border-transparent hover:bg-white/5"
+                      }`}
+                    >
+                      <div className="relative shrink-0">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 via-blue-500 to-pink-500 text-sm font-bold shadow-lg shadow-violet-900/20">
+                          {initials(
+                            profile
+                          )}
+                        </div>
+
+                        <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#080a18] bg-emerald-400" />
                       </div>
 
-                      <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#080a18] bg-emerald-400" />
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="truncate text-sm font-semibold">
-                          {name(profile)}
-                        </span>
-
-                        {last && (
-                          <span className="shrink-0 text-[10px] text-white/25">
-                            {time(last.created_at)}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate text-sm font-semibold">
+                            {name(
+                              profile
+                            )}
                           </span>
-                        )}
-                      </div>
 
-                      <p className="mt-1 truncate text-xs text-white/35">
-                        {last
-                          ? last.sender_id === userId
-                            ? `You: ${last.content}`
-                            : last.content
-                          : "Start a conversation"}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })}
+                          {last && (
+                            <span className="shrink-0 text-[10px] text-white/25">
+                              {time(
+                                last.created_at
+                              )}
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="mt-1 truncate text-xs text-white/35">
+                          {last
+                            ? last.sender_id ===
+                              userId
+                              ? `You: ${last.content}`
+                              : last.content
+                            : "Start a conversation"}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                }
+              )}
             </div>
           )}
         </aside>
@@ -446,7 +695,9 @@ useEffect(() => {
         {/* Chat area */}
         <section
           className={`flex min-h-[calc(100vh-80px)] flex-1 flex-col ${
-            selected ? "flex" : "hidden md:flex"
+            selected
+              ? "flex"
+              : "hidden md:flex"
           }`}
         >
           {!selected ? (
@@ -471,7 +722,9 @@ useEffect(() => {
               {/* Chat header */}
               <div className="flex items-center gap-3 border-b border-white/10 bg-white/[0.015] p-4">
                 <button
-                  onClick={() => setSelected(null)}
+                  onClick={() =>
+                    setSelected(null)
+                  }
                   className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-lg text-white/70 md:hidden"
                 >
                   ←
@@ -479,7 +732,9 @@ useEffect(() => {
 
                 <div className="relative">
                   <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 via-blue-500 to-pink-500 text-sm font-bold">
-                    {initials(selected)}
+                    {initials(
+                      selected
+                    )}
                   </div>
 
                   <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#080a18] bg-emerald-400" />
@@ -493,7 +748,8 @@ useEffect(() => {
                   <p className="mt-0.5 truncate text-xs text-white/35">
                     {selected.username
                       ? `@${selected.username}`
-                      : selected.country || "Nikelink connection"}
+                      : selected.country ||
+                        "Nikelink connection"}
                   </p>
                 </div>
 
@@ -505,7 +761,7 @@ useEffect(() => {
                 </button>
               </div>
 
-              {/* Messages */}
+                            {/* Messages */}
               <div className="flex-1 space-y-3 overflow-y-auto px-4 py-5">
                 {conversation.length === 0 ? (
                   <div className="flex min-h-[55vh] items-center justify-center text-center">
@@ -525,13 +781,16 @@ useEffect(() => {
                   </div>
                 ) : (
                   conversation.map((message) => {
-                    const mine = message.sender_id === userId;
+                    const mine =
+                      message.sender_id === userId;
 
                     return (
                       <div
                         key={message.id}
                         className={`flex ${
-                          mine ? "justify-end" : "justify-start"
+                          mine
+                            ? "justify-end"
+                            : "justify-start"
                         }`}
                       >
                         <div
@@ -547,7 +806,9 @@ useEffect(() => {
 
                           <p
                             className={`mt-1 text-[10px] ${
-                              mine ? "text-white/55" : "text-white/30"
+                              mine
+                                ? "text-white/55"
+                                : "text-white/30"
                             }`}
                           >
                             {time(message.created_at)}
@@ -571,9 +832,14 @@ useEffect(() => {
 
                   <textarea
                     value={text}
-                    onChange={(event) => setText(event.target.value)}
+                    onChange={(event) =>
+                      setText(event.target.value)
+                    }
                     onKeyDown={(event) => {
-                      if (event.key === "Enter" && !event.shiftKey) {
+                      if (
+                        event.key === "Enter" &&
+                        !event.shiftKey
+                      ) {
                         event.preventDefault();
                         sendMessage();
                       }
@@ -585,7 +851,9 @@ useEffect(() => {
 
                   <button
                     onClick={sendMessage}
-                    disabled={!text.trim() || sending}
+                    disabled={
+                      !text.trim() || sending
+                    }
                     className="flex h-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-r from-violet-600 to-pink-500 px-4 text-sm font-bold shadow-lg shadow-violet-950/20 transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-30"
                   >
                     {sending ? "..." : "Send"}
@@ -605,19 +873,34 @@ useEffect(() => {
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#050816]/95 backdrop-blur-2xl">
         <div className="mx-auto flex max-w-2xl items-center justify-around px-2 py-2">
           {navItems.map((item) => {
-            const active = item.path === "/messages";
+            const active =
+              item.path === "/messages";
 
             return (
               <button
                 key={item.path}
-                onClick={() => router.push(item.path)}
-                className={`flex min-w-[70px] flex-col items-center gap-1 rounded-2xl px-4 py-2 transition ${
+                onClick={() =>
+                  router.push(item.path)
+                }
+                className={`relative flex min-w-[70px] flex-col items-center gap-1 rounded-2xl px-4 py-2 transition ${
                   active
                     ? "bg-violet-500/10 text-violet-300"
                     : "text-white/35 hover:bg-white/5 hover:text-white/70"
                 }`}
               >
-                <span className="text-xl leading-none">{item.icon}</span>
+                <span className="relative text-xl leading-none">
+                  {item.icon}
+
+                  {/* Unread message badge */}
+                  {item.path === "/messages" &&
+                    unreadMessages > 0 && (
+                      <span className="absolute -right-3 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-pink-500 px-1 text-[9px] font-black leading-none text-white shadow-lg shadow-pink-500/30">
+                        {unreadMessages > 99
+                          ? "99+"
+                          : unreadMessages}
+                      </span>
+                    )}
+                </span>
 
                 <span className="text-[10px] font-semibold">
                   {item.label}
