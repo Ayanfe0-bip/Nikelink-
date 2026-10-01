@@ -1259,7 +1259,7 @@ export default function MessagesPage() {
         </section>
       </div>
 
-      {/* Bottom navigation */}
+            {/* Bottom navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#050816]/95 backdrop-blur-2xl">
         <div className="mx-auto flex max-w-2xl items-center justify-around px-2 py-2">
           {navItems.map((item) => {
@@ -1302,9 +1302,11 @@ export default function MessagesPage() {
                   {item.label}
                 </span>
               </button>
-           );
+            );
           })}
         </div>
       </nav>
     </main>
   );
+      }
+      
