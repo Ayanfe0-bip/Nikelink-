@@ -50,8 +50,17 @@ export default function MessagesPage() {
   const [unreadNotifications, setUnreadNotifications] =
     useState(0);
 
-  const [unreadMessages, setUnreadMessages] =
-    useState(0);
+  /*
+   * UNREAD MESSAGES PER CONVERSATION
+   *
+   * Example:
+   * {
+   *   "person-id-1": 3,
+   *   "person-id-2": 1
+   * }
+   */
+  const [unreadByUser, setUnreadByUser] =
+    useState<Record<string, number>>({});
 
   const [profiles, setProfiles] =
     useState<Profile[]>([]);
@@ -66,6 +75,16 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [search, setSearch] = useState("");
+
+  /*
+   * TOTAL UNREAD MESSAGE COUNT
+   */
+  const unreadMessages = useMemo(() => {
+    return Object.values(unreadByUser).reduce(
+      (total, count) => total + count,
+      0
+    );
+  }, [unreadByUser]);
 
   /*
    * LOAD USER, CONNECTIONS AND MESSAGES
@@ -83,6 +102,32 @@ export default function MessagesPage() {
       const id = data.user.id;
 
       setUserId(id);
+
+      /*
+       * LOAD SAVED UNREAD COUNTS
+       */
+      const storedUnread =
+        localStorage.getItem(
+          `nikelink-unread-conversations-${id}`
+        );
+
+      if (storedUnread) {
+        try {
+          const parsed =
+            JSON.parse(storedUnread);
+
+          if (
+            parsed &&
+            typeof parsed === "object"
+          ) {
+            setUnreadByUser(parsed);
+          }
+        } catch {
+          localStorage.removeItem(
+            `nikelink-unread-conversations-${id}`
+          );
+        }
+      }
 
       /*
        * LOAD ACCEPTED CONNECTIONS
@@ -146,6 +191,18 @@ export default function MessagesPage() {
   }, [router]);
 
   /*
+   * SAVE UNREAD COUNTS
+   */
+  useEffect(() => {
+    if (!userId) return;
+
+    localStorage.setItem(
+      `nikelink-unread-conversations-${userId}`,
+      JSON.stringify(unreadByUser)
+    );
+  }, [unreadByUser, userId]);
+
+  /*
    * LOAD UNREAD NOTIFICATIONS
    */
   useEffect(() => {
@@ -205,24 +262,6 @@ export default function MessagesPage() {
   }, [userId]);
 
   /*
-   * LOAD UNREAD MESSAGE COUNT
-   */
-  useEffect(() => {
-    if (!userId) return;
-
-    const storedUnread =
-      localStorage.getItem(
-        `nikelink-unread-messages-${userId}`
-      );
-
-    if (storedUnread) {
-      setUnreadMessages(
-        Number(storedUnread) || 0
-      );
-    }
-  }, [userId]);
-
-  /*
    * REALTIME MESSAGES
    */
   useEffect(() => {
@@ -247,6 +286,9 @@ export default function MessagesPage() {
             message.sender_id === userId ||
             message.receiver_id === userId
           ) {
+            /*
+             * ADD NEW MESSAGE
+             */
             setMessages((old) => {
               if (
                 old.some(
@@ -261,27 +303,34 @@ export default function MessagesPage() {
             });
 
             /*
-             * Count incoming messages.
-             *
-             * We only count messages where
-             * the current user is the receiver.
+             * ONLY INCOMING MESSAGES
              */
             if (
               message.receiver_id === userId
             ) {
-              setUnreadMessages(
-                (current) => {
-                  const next =
-                    current + 1;
+              /*
+               * If we're currently viewing
+               * this conversation, don't count
+               * the message as unread.
+               */
+              if (
+                selected?.id ===
+                message.sender_id
+              ) {
+                return;
+              }
 
-                  localStorage.setItem(
-                    `nikelink-unread-messages-${userId}`,
-                    String(next)
-                  );
-
-                  return next;
-                }
-              );
+              /*
+               * Otherwise increase the unread
+               * count for this specific person.
+               */
+              setUnreadByUser((current) => ({
+                ...current,
+                [message.sender_id]:
+                  (current[
+                    message.sender_id
+                  ] || 0) + 1,
+              }));
             }
           }
         }
@@ -291,7 +340,7 @@ export default function MessagesPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId]);
+  }, [userId, selected]);
 
   /*
    * SEARCH CONNECTIONS
@@ -376,17 +425,21 @@ export default function MessagesPage() {
     setSelected(profile);
 
     /*
-     * Clear unread message badge when
-     * entering the messaging area.
+     * Clear ONLY this person's unread count.
      */
-    setUnreadMessages(0);
+    setUnreadByUser((current) => {
+      if (!current[profile.id]) {
+        return current;
+      }
 
-    if (userId) {
-      localStorage.setItem(
-        `nikelink-unread-messages-${userId}`,
-        "0"
-      );
-    }
+      const next = {
+        ...current,
+      };
+
+      delete next[profile.id];
+
+      return next;
+    });
   }
 
   /*
@@ -634,6 +687,11 @@ export default function MessagesPage() {
                     selected?.id ===
                     profile.id;
 
+                  const unread =
+                    unreadByUser[
+                      profile.id
+                    ] || 0;
+
                   return (
                     <button
                       key={profile.id}
@@ -656,18 +714,38 @@ export default function MessagesPage() {
                         </div>
 
                         <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#080a18] bg-emerald-400" />
+
+                        {unread > 0 && (
+                          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-pink-500 px-1 text-[9px] font-black text-white shadow-lg shadow-pink-500/30">
+                            {unread > 99
+                              ? "99+"
+                              : unread}
+                          </span>
+                        )}
                       </div>
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="truncate text-sm font-semibold">
+                          <span
+                            className={`truncate text-sm ${
+                              unread > 0
+                                ? "font-black text-white"
+                                : "font-semibold"
+                            }`}
+                          >
                             {name(
                               profile
                             )}
                           </span>
 
                           {last && (
-                            <span className="shrink-0 text-[10px] text-white/25">
+                            <span
+                              className={`shrink-0 text-[10px] ${
+                                unread > 0
+                                  ? "font-bold text-pink-300"
+                                  : "text-white/25"
+                              }`}
+                            >
                               {time(
                                 last.created_at
                               )}
@@ -675,14 +753,28 @@ export default function MessagesPage() {
                           )}
                         </div>
 
-                        <p className="mt-1 truncate text-xs text-white/35">
-                          {last
-                            ? last.sender_id ===
-                              userId
-                              ? `You: ${last.content}`
-                              : last.content
-                            : "Start a conversation"}
-                        </p>
+                        <div className="mt-1 flex items-center gap-2">
+                          <p
+                            className={`min-w-0 flex-1 truncate text-xs ${
+                              unread > 0
+                                ? "font-semibold text-white/65"
+                                : "text-white/35"
+                            }`}
+                          >
+                            {last
+                              ? last.sender_id ===
+                                userId
+                                ? `You: ${last.content}`
+                                : last.content
+                              : "Start a conversation"}
+                          </p>
+
+                          {unread > 0 && (
+                            <span className="shrink-0 text-[9px] font-black uppercase tracking-wider text-pink-300">
+                              New
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </button>
                   );
@@ -692,7 +784,7 @@ export default function MessagesPage() {
           )}
         </aside>
 
-        {/* Chat area */}
+                {/* Chat area */}
         <section
           className={`flex min-h-[calc(100vh-80px)] flex-1 flex-col ${
             selected
@@ -732,9 +824,7 @@ export default function MessagesPage() {
 
                 <div className="relative">
                   <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 via-blue-500 to-pink-500 text-sm font-bold">
-                    {initials(
-                      selected
-                    )}
+                    {initials(selected)}
                   </div>
 
                   <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#080a18] bg-emerald-400" />
@@ -761,7 +851,7 @@ export default function MessagesPage() {
                 </button>
               </div>
 
-                            {/* Messages */}
+              {/* Messages */}
               <div className="flex-1 space-y-3 overflow-y-auto px-4 py-5">
                 {conversation.length === 0 ? (
                   <div className="flex min-h-[55vh] items-center justify-center text-center">
