@@ -122,6 +122,31 @@ useEffect(() => {
   loadUnreadNotifications();
 }, [userId]);
   useEffect(() => {
+  if (!userId) return;
+
+  const channel = supabase
+    .channel(`messages-notifications-${userId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "notification",
+        filter: `user_id=eq.${userId}`,
+      },
+      () => {
+        setUnreadNotifications(
+          (current) => current + 1
+        );
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, [userId]);
+  useEffect(() => {
     if (!userId) return;
 
     const channel = supabase
