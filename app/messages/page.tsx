@@ -276,11 +276,20 @@ useEffect(() => {
           </div>
 
           <button
-            onClick={() => router.push("/feed")}
-            className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white/70 transition hover:bg-white/10 hover:text-white"
-          >
-            Home
-          </button>
+  onClick={() => router.push("/notifications")}
+  aria-label="Notifications"
+  className="relative flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-lg transition hover:bg-white/10"
+>
+  🔔
+
+  {unreadNotifications > 0 && (
+    <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-pink-500 px-1 text-[10px] font-black text-white shadow-lg shadow-pink-500/30">
+      {unreadNotifications > 99
+        ? "99+"
+        : unreadNotifications}
+    </span>
+  )}
+</button>
         </div>
       </header>
 
