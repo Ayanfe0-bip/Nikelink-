@@ -1,4 +1,4 @@
-"use client";
+2"use client";
 
 import {
   useEffect,
@@ -328,13 +328,18 @@ useEffect(() => {
     )}
   </button>
 
-  <button
+    <button
     onClick={handleSignOut}
     className="rounded-xl border border-white/10 px-4 py-2 text-xs font-semibold text-white/55 transition hover:border-white/20 hover:bg-white/5 hover:text-white"
   >
     Sign out
   </button>
 </div>
+
+</div>
+</header>
+
+      {/* MAIN */}
 
       {/* MAIN */}
 
