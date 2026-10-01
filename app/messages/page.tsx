@@ -46,6 +46,8 @@ export default function MessagesPage() {
   const router = useRouter();
 
   const [userId, setUserId] = useState("");
+  const [unreadNotifications, setUnreadNotifications] =
+  useState(0);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [selected, setSelected] = useState<Profile | null>(null);
@@ -99,7 +101,26 @@ export default function MessagesPage() {
 
     load();
   }, [router]);
+useEffect(() => {
+  if (!userId) return;
 
+  const loadUnreadNotifications = async () => {
+    const { count, error } = await supabase
+      .from("notification")
+      .select("*", {
+        count: "exact",
+        head: true,
+      })
+      .eq("user_id", userId)
+      .eq("is_read", false);
+
+    if (!error) {
+      setUnreadNotifications(count || 0);
+    }
+  };
+
+  loadUnreadNotifications();
+}, [userId]);
   useEffect(() => {
     if (!userId) return;
 
