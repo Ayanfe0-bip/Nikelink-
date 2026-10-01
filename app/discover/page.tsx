@@ -458,6 +458,31 @@ useEffect(() => {
 
   loadUnreadNotifications();
 }, [userId]);
+  useEffect(() => {
+  if (!userId) return;
+
+  const channel = supabase
+    .channel(`discover-notifications-${userId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "notification",
+        filter: `user_id=eq.${userId}`,
+      },
+      () => {
+        setUnreadNotifications(
+          (current) => current + 1
+        );
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, [userId]);
   async function loadDiscover() {
     setLoading(true);
     setErrorMessage("");
