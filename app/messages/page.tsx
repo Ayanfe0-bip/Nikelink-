@@ -1308,5 +1308,4 @@ export default function MessagesPage() {
       </nav>
     </main>
   );
-      }
       
