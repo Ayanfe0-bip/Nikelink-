@@ -1235,5 +1235,6 @@ export default function MessagesPage() {
         })}
       </div>
     </nav>
-  </main>
+    </main>
 );
+}
