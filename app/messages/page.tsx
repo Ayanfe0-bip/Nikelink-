@@ -931,113 +931,97 @@ export default function MessagesPage() {
                       ] || 0;
 
                     const active =
-                      selected?.id ===
-                      profile.id;
+  selected?.id ===
+  profile.id;
 
-                    return (
-                      <button
-                        key={profile.id}
-                        onClick={() =>
-                          openConversation(
-                            profile
-                          )
-                        }
-                        className={`w-full rounded-2xl p-3 text-left transition ${
-                          active
-                            ? "bg-violet-500/10"
-                            : "hover:bg-white/[0.04]"
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          {/* Avatar */}
-                          <div className="relative shrink-0">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 via-blue-500 to-pink-500 text-sm font-bold">
-                              {initials(
-                                profile
-                              )}
-                            </div>
+return (
+  <button
+    key={profile.id}
+    onClick={() =>
+      openConversation(
+        profile
+      )
+    }
+    className={`w-full rounded-2xl p-3 text-left transition ${
+      active
+        ? "bg-violet-500/10"
+        : "hover:bg-white/[0.04]"
+    }`}
+  >
+    <div className="flex items-center gap-3">
+      {/* Avatar */}
+      <div className="relative shrink-0">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 via-blue-500 to-pink-500 text-sm font-bold">
+          {initials(profile)}
+        </div>
 
-                            {isOnline(
-                              profile.id
-                            ) && (
-                              <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-[#080a18] bg-emerald-400 shadow-lg shadow-emerald-400/40" />
-                            )}
+        {isOnline(profile.id) && (
+          <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-[#080a18] bg-emerald-400 shadow-lg shadow-emerald-400/40" />
+        )}
 
-                            {unread > 0 && (
-                              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-pink-500 px-1 text-[9px] font-black text-white shadow-lg shadow-pink-500/30">
-                                {unread >
-                                99
-                                  ? "99+"
-                                  : unread}
-                              </span>
-                            )}
-                          </div>
+        {unread > 0 && (
+          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-pink-500 px-1 text-[9px] font-black text-white shadow-lg shadow-pink-500/30">
+            {unread > 99
+              ? "99+"
+              : unread}
+          </span>
+        )}
+      </div>
 
-                          {/* Conversation details */}
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center justify-between gap-2">
-                              <p
-                                className={`truncate text-sm ${
-                                  unread > 0
-                                    ? "font-black text-white"
-                                    : "font-semibold text-white/90"
-                                }`}
-                              >
-                                {name(
-                                  profile
-                                )}
-                              </p>
+      {/* Conversation details */}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-2">
+          <p
+            className={`truncate text-sm ${
+              unread > 0
+                ? "font-black text-white"
+                : "font-semibold text-white/90"
+            }`}
+          >
+            {name(profile)}
+          </p>
 
-                              {last && (
-                                <span className="shrink-0 text-[10px] text-white/25">
-                                  {time(
-                                    last.created_at
-                                  )}
-                                </span>
-                              )}
-                            </div>
+          {last && (
+            <span className="shrink-0 text-[10px] text-white/25">
+              {time(last.created_at)}
+            </span>
+          )}
+        </div>
 
-                            <p
-                              className={`mt-1 truncate text-xs ${
-                                unread > 0
-                                  ? "font-semibold text-white/60"
-                                  : "text-white/30"
-                              }`}
-                            >
-                              {last
-                                ? last.content
-                                : "Start a conversation"}
-                            </p>
+        <p
+          className={`mt-1 truncate text-xs ${
+            unread > 0
+              ? "font-semibold text-white/60"
+              : "text-white/30"
+          }`}
+        >
+          {last
+            ? last.content
+            : "Start a conversation"}
+        </p>
 
-                            <p
-                              className={`mt-1 text-[10px] ${
-                                isOnline(
-                                  profile.id
-                                )
-                                  ? "text-emerald-400"
-                                  : "text-white/20"
-                              }`}
-                            >
-                              {isOnline(
-                                profile.id
-                              )
-                                ? "Online"
-                                : lastSeenText(
-                                    profile
-                                  )}
-                            </p>
-                          </div>
+        <p
+          className={`mt-1 text-[10px] ${
+            isOnline(profile.id)
+              ? "text-emerald-400"
+              : "text-white/20"
+          }`}
+        >
+          {isOnline(profile.id)
+            ? "Online"
+            : lastSeenText(profile)}
+        </p>
+      </div>
 
-                          {unread > 0 && (
-                            <span className="shrink-0 rounded-full bg-pink-500/10 px-2 py-1 text-[9px] font-black text-pink-400">
-                              New
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  }
-                )}
+      {unread > 0 && (
+        <span className="shrink-0 rounded-full bg-pink-500/10 px-2 py-1 text-[9px] font-black text-pink-400">
+          New
+        </span>
+      )}
+    </div>
+  </button>
+);
+})}
               </div>
             )}
           </div>
@@ -1082,14 +1066,10 @@ export default function MessagesPage() {
 
                 <div className="relative">
                   <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 via-blue-500 to-pink-500 text-sm font-bold">
-                    {initials(
-                      selected
-                    )}
+                    {initials(selected)}
                   </div>
 
-                  {isOnline(
-                    selected.id
-                  ) && (
+                  {isOnline(selected.id) && (
                     <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#080a18] bg-emerald-400 shadow-lg shadow-emerald-400/40" />
                   )}
                 </div>
@@ -1101,20 +1081,14 @@ export default function MessagesPage() {
 
                   <p
                     className={`mt-0.5 truncate text-xs ${
-                      isOnline(
-                        selected.id
-                      )
+                      isOnline(selected.id)
                         ? "text-emerald-400"
                         : "text-white/35"
                     }`}
                   >
-                    {isOnline(
-                      selected.id
-                    )
+                    {isOnline(selected.id)
                       ? "🟢 Online"
-                      : lastSeenText(
-                          selected
-                        )}
+                      : lastSeenText(selected)}
                   </p>
                 </div>
 
@@ -1128,8 +1102,7 @@ export default function MessagesPage() {
 
               {/* Messages */}
               <div className="flex-1 space-y-3 overflow-y-auto px-4 py-5">
-                {conversation.length ===
-                0 ? (
+                {conversation.length === 0 ? (
                   <div className="flex min-h-[55vh] items-center justify-center text-center">
                     <div>
                       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-violet-400/20 bg-violet-500/10 text-2xl">
@@ -1142,60 +1115,49 @@ export default function MessagesPage() {
 
                       <p className="mt-2 text-sm text-white/35">
                         Say hello to{" "}
-                        {name(
-                          selected
-                        )}
-                        .
+                        {name(selected)}.
                       </p>
                     </div>
                   </div>
                 ) : (
-                  conversation.map(
-                    (message) => {
-                      const mine =
-                        message.sender_id ===
-                        userId;
+                  conversation.map((message) => {
+                    const mine =
+                      message.sender_id ===
+                      userId;
 
-                      return (
+                    return (
+                      <div
+                        key={message.id}
+                        className={`flex ${
+                          mine
+                            ? "justify-end"
+                            : "justify-start"
+                        }`}
+                      >
                         <div
-                          key={
-                            message.id
-                          }
-                          className={`flex ${
+                          className={`max-w-[82%] rounded-3xl px-4 py-3 shadow-lg ${
                             mine
-                              ? "justify-end"
-                              : "justify-start"
+                              ? "rounded-br-md bg-gradient-to-br from-violet-600 to-pink-500 shadow-violet-950/20"
+                              : "rounded-bl-md border border-white/10 bg-white/[0.06]"
                           }`}
                         >
-                          <div
-                            className={`max-w-[82%] rounded-3xl px-4 py-3 shadow-lg ${
+                          <p className="break-words text-sm leading-6">
+                            {message.content}
+                          </p>
+
+                          <p
+                            className={`mt-1 text-[10px] ${
                               mine
-                                ? "rounded-br-md bg-gradient-to-br from-violet-600 to-pink-500 shadow-violet-950/20"
-                                : "rounded-bl-md border border-white/10 bg-white/[0.06]"
+                                ? "text-white/55"
+                                : "text-white/30"
                             }`}
                           >
-                            <p className="break-words text-sm leading-6">
-                              {
-                                message.content
-                              }
-                            </p>
-
-                            <p
-                              className={`mt-1 text-[10px] ${
-                                mine
-                                  ? "text-white/55"
-                                  : "text-white/30"
-                              }`}
-                            >
-                              {time(
-                                message.created_at
-                              )}
-                            </p>
-                          </div>
+                            {time(message.created_at)}
+                          </p>
                         </div>
-                      );
-                    }
-                  )
+                      </div>
+                    );
+                  })
                 )}
               </div>
 
@@ -1212,17 +1174,11 @@ export default function MessagesPage() {
                   <textarea
                     value={text}
                     onChange={(event) =>
-                      setText(
-                        event.target
-                          .value
-                      )
+                      setText(event.target.value)
                     }
-                    onKeyDown={(
-                      event
-                    ) => {
+                    onKeyDown={(event) => {
                       if (
-                        event.key ===
-                          "Enter" &&
+                        event.key === "Enter" &&
                         !event.shiftKey
                       ) {
                         event.preventDefault();
@@ -1235,9 +1191,7 @@ export default function MessagesPage() {
                   />
 
                   <button
-                    onClick={
-                      sendMessage
-                    }
+                    onClick={sendMessage}
                     disabled={
                       !text.trim() ||
                       sending
@@ -1259,21 +1213,18 @@ export default function MessagesPage() {
         </section>
       </div>
 
-            {/* Bottom navigation */}
+      {/* Bottom navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#050816]/95 backdrop-blur-2xl">
         <div className="mx-auto flex max-w-2xl items-center justify-around px-2 py-2">
           {navItems.map((item) => {
             const active =
-              item.path ===
-              "/messages";
+              item.path === "/messages";
 
             return (
               <button
                 key={item.path}
                 onClick={() =>
-                  router.push(
-                    item.path
-                  )
+                  router.push(item.path)
                 }
                 className={`relative flex min-w-[70px] flex-col items-center gap-1 rounded-2xl px-4 py-2 transition ${
                   active
@@ -1285,13 +1236,10 @@ export default function MessagesPage() {
                   {item.icon}
 
                   {/* Unread message badge */}
-                  {item.path ===
-                    "/messages" &&
-                    unreadMessages >
-                      0 && (
+                  {item.path === "/messages" &&
+                    unreadMessages > 0 && (
                       <span className="absolute -right-3 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-pink-500 px-1 text-[9px] font-black leading-none text-white shadow-lg shadow-pink-500/30">
-                        {unreadMessages >
-                        99
+                        {unreadMessages > 99
                           ? "99+"
                           : unreadMessages}
                       </span>
@@ -1308,4 +1256,5 @@ export default function MessagesPage() {
       </nav>
     </main>
   );
-      
+}
+    
