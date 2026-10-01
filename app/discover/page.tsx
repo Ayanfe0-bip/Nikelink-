@@ -1183,54 +1183,58 @@ async function toggleFollow(profileId: string) {
       </div>
 
       {/* HEADER */}
-      <header className="sticky top-0 z-30 border-b border-white/10 bg-[#050816]/90 px-5 py-5 backdrop-blur-2xl">
-        <div className="mx-auto max-w-3xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-violet-400">
-                Nikelink
-              </p>
+<header className="sticky top-0 z-30 border-b border-white/10 bg-[#050816]/90 px-5 py-5 backdrop-blur-2xl">
+  <div className="mx-auto max-w-3xl">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-[11px] font-black uppercase tracking-[0.25em] text-violet-400">
+          Nikelink
+        </p>
 
-              <h1 className="mt-1 text-3xl font-black tracking-tight">
-                Discover
-              </h1>
+        <h1 className="mt-1 text-3xl font-black tracking-tight">
+          Discover
+        </h1>
 
-              <p className="mt-1 text-sm text-white/40">
-                Find your people around the world.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-  <button
-    onClick={() =>
-      router.push("/notifications")
-    }
-    aria-label="Notifications"
-    className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-lg shadow-lg transition hover:bg-white/10"
-  >
-    🔔
-
-    {unreadNotifications > 0 && (
-      <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-pink-500 px-1 text-[10px] font-black text-white shadow-lg shadow-pink-500/30">
-        {unreadNotifications > 99
-          ? "99+"
-          : unreadNotifications}
-      </span>
-    )}
-  </button>
-          <button
-            onClick={() =>
-              router.push("/profile")
-            }
-            className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-lg shadow-lg transition hover:bg-white/10"
-            aria-label="Open profile"
-          >
-            👤
-          </button>
-        </div>
+        <p className="mt-1 text-sm text-white/40">
+          Find your people around the world.
+        </p>
       </div>
-    </header>
 
+      <div className="flex items-center gap-2">
+        {/* NOTIFICATIONS */}
+        <button
+          onClick={() =>
+            router.push("/notifications")
+          }
+          aria-label="Notifications"
+          className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-lg shadow-lg transition hover:bg-white/10"
+        >
+          🔔
+
+          {unreadNotifications > 0 && (
+            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-pink-500 px-1 text-[10px] font-black text-white shadow-lg shadow-pink-500/30">
+              {unreadNotifications > 99
+                ? "99+"
+                : unreadNotifications}
+            </span>
+          )}
+        </button>
+
+        {/* PROFILE */}
+        <button
+          onClick={() =>
+            router.push("/profile")
+          }
+          className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-lg shadow-lg transition hover:bg-white/10"
+          aria-label="Open profile"
+        >
+          👤
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+    
           {/* SEARCH */}
           <div className="mt-6 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.045] px-4 shadow-inner">
             <span className="text-lg text-white/40">
