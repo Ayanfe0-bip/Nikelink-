@@ -38,6 +38,8 @@ export default function CommunitiesPage() {
   );
 
   const [userId, setUserId] = useState("");
+  const [unreadNotifications, setUnreadNotifications] =
+  useState(0);
   const [loading, setLoading] = useState(true);
   const [workingId, setWorkingId] = useState("");
   const [search, setSearch] = useState("");
@@ -53,7 +55,26 @@ export default function CommunitiesPage() {
   useEffect(() => {
     loadCommunities();
   }, []);
+useEffect(() => {
+  if (!userId) return;
 
+  const loadUnreadNotifications = async () => {
+    const { count, error } = await supabase
+      .from("notification")
+      .select("*", {
+        count: "exact",
+        head: true,
+      })
+      .eq("user_id", userId)
+      .eq("is_read", false);
+
+    if (!error) {
+      setUnreadNotifications(count || 0);
+    }
+  };
+
+  loadUnreadNotifications();
+}, [userId]);
   async function loadCommunities() {
     setLoading(true);
 
