@@ -1302,10 +1302,9 @@ export default function MessagesPage() {
                   {item.label}
                 </span>
               </button>
-            );
+           );
           })}
         </div>
       </nav>
     </main>
   );
-      }
