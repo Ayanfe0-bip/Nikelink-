@@ -1304,7 +1304,6 @@ async function toggleFollow(profileId: string) {
               );
             })}
           </div>
-        </div>
       </header>
 
       {/* CONTENT */}
