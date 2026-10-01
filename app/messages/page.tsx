@@ -9,6 +9,7 @@ type Profile = {
   full_name: string | null;
   username: string | null;
   country: string | null;
+  last_seen: string | null;
 };
 
 type Message = {
@@ -20,26 +21,10 @@ type Message = {
 };
 
 const navItems = [
-  {
-    label: "Home",
-    icon: "⌂",
-    path: "/feed",
-  },
-  {
-    label: "Discover",
-    icon: "⌕",
-    path: "/discover",
-  },
-  {
-    label: "Community",
-    icon: "◉",
-    path: "/communities",
-  },
-  {
-    label: "Messages",
-    icon: "✉",
-    path: "/messages",
-  },
+  { label: "Home", icon: "⌂", path: "/feed" },
+  { label: "Discover", icon: "⌕", path: "/discover" },
+  { label: "Community", icon: "◉", path: "/communities" },
+  { label: "Messages", icon: "✉", path: "/messages" },
 ];
 
 export default function MessagesPage() {
@@ -52,15 +37,15 @@ export default function MessagesPage() {
 
   /*
    * UNREAD MESSAGES PER CONVERSATION
-   *
-   * Example:
-   * {
-   *   "person-id-1": 3,
-   *   "person-id-2": 1
-   * }
    */
   const [unreadByUser, setUnreadByUser] =
     useState<Record<string, number>>({});
+
+  /*
+   * ONLINE / OFFLINE PRESENCE
+   */
+  const [onlineUsers, setOnlineUsers] =
+    useState<Set<string>>(new Set());
 
   const [profiles, setProfiles] =
     useState<Profile[]>([]);
@@ -77,7 +62,7 @@ export default function MessagesPage() {
   const [search, setSearch] = useState("");
 
   /*
-   * TOTAL UNREAD MESSAGE COUNT
+   * TOTAL UNREAD MESSAGES
    */
   const unreadMessages = useMemo(() => {
     return Object.values(unreadByUser).reduce(
@@ -87,108 +72,152 @@ export default function MessagesPage() {
   }, [unreadByUser]);
 
   /*
-   * LOAD USER, CONNECTIONS AND MESSAGES
+   * INITIAL LOAD
    */
   useEffect(() => {
-    async function load() {
-      const { data } =
-        await supabase.auth.getUser();
+    loadMessages();
+  }, []);
 
-      if (!data.user) {
-        router.replace("/login");
-        return;
-      }
+  async function loadMessages() {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-      const id = data.user.id;
-
-      setUserId(id);
-
-      /*
-       * LOAD SAVED UNREAD COUNTS
-       */
-      const storedUnread =
-        localStorage.getItem(
-          `nikelink-unread-conversations-${id}`
-        );
-
-      if (storedUnread) {
-        try {
-          const parsed =
-            JSON.parse(storedUnread);
-
-          if (
-            parsed &&
-            typeof parsed === "object"
-          ) {
-            setUnreadByUser(parsed);
-          }
-        } catch {
-          localStorage.removeItem(
-            `nikelink-unread-conversations-${id}`
-          );
-        }
-      }
-
-      /*
-       * LOAD ACCEPTED CONNECTIONS
-       */
-      const { data: connections } =
-        await supabase
-          .from("connections")
-          .select(
-            "requester_id, receiver_id"
-          )
-          .eq("status", "accepted")
-          .or(
-            `requester_id.eq.${id},receiver_id.eq.${id}`
-          );
-
-      const ids = (
-        connections || []
-      ).map((connection) =>
-        connection.requester_id === id
-          ? connection.receiver_id
-          : connection.requester_id
-      );
-
-      /*
-       * LOAD CONNECTED PROFILES
-       */
-      if (ids.length) {
-        const { data: people } =
-          await supabase
-            .from("profiles")
-            .select(
-              "id, full_name, username, country"
-            )
-            .in("id", ids);
-
-        setProfiles(people || []);
-      }
-
-      /*
-       * LOAD MESSAGES
-       */
-      const { data: msgs } =
-        await supabase
-          .from("messages")
-          .select(
-            "id, sender_id, receiver_id, content, created_at"
-          )
-          .or(
-            `sender_id.eq.${id},receiver_id.eq.${id}`
-          )
-          .order("created_at", {
-            ascending: true,
-          });
-
-      setMessages(msgs || []);
-
-      setLoading(false);
+    if (userError || !user) {
+      router.replace("/login");
+      return;
     }
 
-    load();
-  }, [router]);
+    const currentUserId = user.id;
+
+    setUserId(currentUserId);
+
+    /*
+     * LOAD SAVED UNREAD COUNTS
+     */
+    try {
+      const saved =
+        localStorage.getItem(
+          `nikelink-unread-conversations-${currentUserId}`
+        );
+
+      if (saved) {
+        const parsed = JSON.parse(saved);
+
+        if (
+          parsed &&
+          typeof parsed === "object"
+        ) {
+          setUnreadByUser(parsed);
+        }
+      }
+    } catch (error) {
+      console.error(
+        "Unread storage error:",
+        error
+      );
+    }
+
+    /*
+     * LOAD ACCEPTED CONNECTIONS
+     */
+    const {
+      data: connectionData,
+      error: connectionError,
+    } = await supabase
+      .from("connections")
+      .select(
+        "requester_id, receiver_id, status"
+      )
+      .eq("status", "accepted")
+      .or(
+        `requester_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`
+      );
+
+    if (connectionError) {
+      console.error(
+        "Connection error:",
+        connectionError
+      );
+    }
+
+    const connectedIds = new Set<string>();
+
+    (connectionData || []).forEach(
+      (connection) => {
+        const otherUser =
+          connection.requester_id ===
+          currentUserId
+            ? connection.receiver_id
+            : connection.requester_id;
+
+        connectedIds.add(otherUser);
+      }
+    );
+
+    /*
+     * LOAD CONNECTED PROFILES
+     */
+    if (connectedIds.size > 0) {
+      const {
+        data: profileData,
+        error: profileError,
+      } = await supabase
+        .from("profiles")
+        .select(
+          "id, full_name, username, country, last_seen"
+        )
+        .in(
+          "id",
+          Array.from(connectedIds)
+        );
+
+      if (profileError) {
+        console.error(
+          "Profile error:",
+          profileError
+        );
+      } else {
+        setProfiles(
+          (profileData || []) as Profile[]
+        );
+      }
+    } else {
+      setProfiles([]);
+    }
+
+    /*
+     * LOAD MESSAGES
+     */
+    const {
+      data: messageData,
+      error: messageError,
+    } = await supabase
+      .from("messages")
+      .select(
+        "id, sender_id, receiver_id, content, created_at"
+      )
+      .or(
+        `sender_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`
+      )
+      .order("created_at", {
+        ascending: true,
+      });
+
+    if (messageError) {
+      console.error(
+        "Messages error:",
+        messageError
+      );
+    } else {
+      setMessages(
+        (messageData || []) as Message[]
+      );
+    }
+
+    setLoading(false);
+  }
 
   /*
    * SAVE UNREAD COUNTS
@@ -203,7 +232,7 @@ export default function MessagesPage() {
   }, [unreadByUser, userId]);
 
   /*
-   * LOAD UNREAD NOTIFICATIONS
+   * NOTIFICATION UNREAD COUNT
    */
   useEffect(() => {
     if (!userId) return;
@@ -231,7 +260,7 @@ export default function MessagesPage() {
   }, [userId]);
 
   /*
-   * REALTIME NOTIFICATION BADGE
+   * REALTIME NOTIFICATIONS
    */
   useEffect(() => {
     if (!userId) return;
@@ -262,6 +291,155 @@ export default function MessagesPage() {
   }, [userId]);
 
   /*
+   * REALTIME ONLINE PRESENCE
+   */
+  useEffect(() => {
+    if (!userId) return;
+
+    const channel = supabase.channel(
+      "nikelink-online-users",
+      {
+        config: {
+          presence: {
+            key: userId,
+          },
+        },
+      }
+    );
+
+    const updateOnlineUsers = () => {
+      const state =
+        channel.presenceState();
+
+      const users = new Set<string>();
+
+      Object.keys(state).forEach(
+        (key) => {
+          users.add(key);
+        }
+      );
+
+      setOnlineUsers(users);
+    };
+
+    channel.on(
+      "presence",
+      {
+        event: "sync",
+      },
+      updateOnlineUsers
+    );
+
+    channel.on(
+      "presence",
+      {
+        event: "join",
+      },
+      updateOnlineUsers
+    );
+
+    channel.on(
+      "presence",
+      {
+        event: "leave",
+      },
+      updateOnlineUsers
+    );
+
+    channel.subscribe(
+      async (status) => {
+        if (status === "SUBSCRIBED") {
+          await channel.track({
+            user_id: userId,
+            online_at:
+              new Date().toISOString(),
+          });
+        }
+      }
+    );
+
+    return () => {
+      channel.untrack();
+      supabase.removeChannel(channel);
+    };
+  }, [userId]);
+
+  /*
+   * UPDATE LAST SEEN
+   */
+  useEffect(() => {
+    if (!userId) return;
+
+    const updateLastSeen =
+      async () => {
+        const timestamp =
+          new Date().toISOString();
+
+        const { error } =
+          await supabase
+            .from("profiles")
+            .update({
+              last_seen: timestamp,
+            })
+            .eq("id", userId);
+
+        if (error) {
+          console.error(
+            "Last seen update error:",
+            error
+          );
+          return;
+        }
+
+        /*
+         * Keep our local profile data
+         * updated immediately.
+         */
+        setProfiles((current) =>
+          current.map((profile) =>
+            profile.id === userId
+              ? {
+                  ...profile,
+                  last_seen: timestamp,
+                }
+              : profile
+          )
+        );
+      };
+
+    updateLastSeen();
+
+    const interval = setInterval(
+      updateLastSeen,
+      60 * 1000
+    );
+
+    const handleVisibilityChange =
+      () => {
+        if (
+          document.visibilityState ===
+          "visible"
+        ) {
+          updateLastSeen();
+        }
+      };
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibilityChange
+    );
+
+    return () => {
+      clearInterval(interval);
+
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange
+      );
+    };
+  }, [userId]);
+
+  /*
    * REALTIME MESSAGES
    */
   useEffect(() => {
@@ -283,17 +461,17 @@ export default function MessagesPage() {
             payload.new as Message;
 
           if (
-            message.sender_id === userId ||
-            message.receiver_id === userId
+            message.sender_id ===
+              userId ||
+            message.receiver_id ===
+              userId
           ) {
-            /*
-             * ADD NEW MESSAGE
-             */
             setMessages((old) => {
               if (
                 old.some(
                   (item) =>
-                    item.id === message.id
+                    item.id ===
+                    message.id
                 )
               ) {
                 return old;
@@ -303,16 +481,14 @@ export default function MessagesPage() {
             });
 
             /*
-             * ONLY INCOMING MESSAGES
+             * Count incoming messages
+             * only when their conversation
+             * is not currently open.
              */
             if (
-              message.receiver_id === userId
+              message.receiver_id ===
+              userId
             ) {
-              /*
-               * If we're currently viewing
-               * this conversation, don't count
-               * the message as unread.
-               */
               if (
                 selected?.id ===
                 message.sender_id
@@ -320,17 +496,15 @@ export default function MessagesPage() {
                 return;
               }
 
-              /*
-               * Otherwise increase the unread
-               * count for this specific person.
-               */
-              setUnreadByUser((current) => ({
-                ...current,
-                [message.sender_id]:
-                  (current[
-                    message.sender_id
-                  ] || 0) + 1,
-              }));
+              setUnreadByUser(
+                (current) => ({
+                  ...current,
+                  [message.sender_id]:
+                    (current[
+                      message.sender_id
+                    ] || 0) + 1,
+                })
+              );
             }
           }
         }
@@ -343,14 +517,16 @@ export default function MessagesPage() {
   }, [userId, selected]);
 
   /*
-   * SEARCH CONNECTIONS
+   * SEARCH
    */
   const filteredProfiles =
     useMemo(() => {
       const value =
         search.trim().toLowerCase();
 
-      if (!value) return profiles;
+      if (!value) {
+        return profiles;
+      }
 
       return profiles.filter(
         (profile) => {
@@ -378,26 +554,21 @@ export default function MessagesPage() {
   /*
    * CURRENT CONVERSATION
    */
-  const conversation =
-    useMemo(() => {
-      if (!selected) return [];
+  const conversation = useMemo(() => {
+    if (!selected) return [];
 
-      return messages.filter(
-        (message) =>
-          (message.sender_id ===
-            userId &&
-            message.receiver_id ===
-              selected.id) ||
-          (message.sender_id ===
-            selected.id &&
-            message.receiver_id ===
-              userId)
-      );
-    }, [
-      messages,
-      selected,
-      userId,
-    ]);
+    return messages.filter(
+      (message) =>
+        (message.sender_id ===
+          userId &&
+          message.receiver_id ===
+            selected.id) ||
+        (message.sender_id ===
+          selected.id &&
+          message.receiver_id ===
+            userId)
+    );
+  }, [messages, selected, userId]);
 
   /*
    * LAST MESSAGE
@@ -407,8 +578,10 @@ export default function MessagesPage() {
       (message) =>
         (message.sender_id ===
           userId &&
-          message.receiver_id === id) ||
-        (message.sender_id === id &&
+          message.receiver_id ===
+            id) ||
+        (message.sender_id ===
+          id &&
           message.receiver_id ===
             userId)
     );
@@ -424,9 +597,6 @@ export default function MessagesPage() {
   ) {
     setSelected(profile);
 
-    /*
-     * Clear ONLY this person's unread count.
-     */
     setUnreadByUser((current) => {
       if (!current[profile.id]) {
         return current;
@@ -446,8 +616,7 @@ export default function MessagesPage() {
    * SEND MESSAGE
    */
   async function sendMessage() {
-    const content =
-      text.trim();
+    const content = text.trim();
 
     if (
       !content ||
@@ -460,19 +629,29 @@ export default function MessagesPage() {
 
     setSending(true);
 
-    const { data, error } =
-      await supabase
-        .from("messages")
-        .insert({
-          sender_id: userId,
-          receiver_id:
-            selected.id,
-          content,
-        })
-        .select()
-        .single();
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("messages")
+      .insert({
+        sender_id: userId,
+        receiver_id: selected.id,
+        content,
+      })
+      .select()
+      .single();
 
-    if (!error && data) {
+    if (error) {
+      console.error(
+        "Send message error:",
+        error
+      );
+      setSending(false);
+      return;
+    }
+
+    if (data) {
       setMessages((old) => {
         if (
           old.some(
@@ -493,7 +672,68 @@ export default function MessagesPage() {
   }
 
   /*
-   * FORMAT MESSAGE TIME
+   * ONLINE CHECK
+   */
+  function isOnline(
+    profileId: string
+  ) {
+    return onlineUsers.has(profileId);
+  }
+
+  /*
+   * LAST SEEN TEXT
+   */
+  function lastSeenText(
+    profile: Profile
+  ) {
+    if (isOnline(profile.id)) {
+      return "Online";
+    }
+
+    if (!profile.last_seen) {
+      return "Offline";
+    }
+
+    const lastSeen =
+      new Date(
+        profile.last_seen
+      ).getTime();
+
+    const now = Date.now();
+
+    const difference = Math.floor(
+      (now - lastSeen) / 1000
+    );
+
+    if (difference < 60) {
+      return "Last seen just now";
+    }
+
+    if (difference < 3600) {
+      return `Last seen ${Math.floor(
+        difference / 60
+      )}m ago`;
+    }
+
+    if (difference < 86400) {
+      return `Last seen ${Math.floor(
+        difference / 3600
+      )}h ago`;
+    }
+
+    if (difference < 604800) {
+      return `Last seen ${Math.floor(
+        difference / 86400
+      )}d ago`;
+    }
+
+    return `Last seen ${new Date(
+      profile.last_seen
+    ).toLocaleDateString()}`;
+  }
+
+  /*
+   * MESSAGE TIME
    */
   function time(value: string) {
     return new Date(
@@ -505,7 +745,7 @@ export default function MessagesPage() {
   }
 
   /*
-   * PROFILE NAME
+   * DISPLAY NAME
    */
   function name(profile: Profile) {
     return (
@@ -516,13 +756,14 @@ export default function MessagesPage() {
   }
 
   /*
-   * PROFILE INITIALS
+   * INITIALS
    */
   function initials(
     profile: Profile
   ) {
-    const value =
-      name(profile).trim();
+    const value = name(
+      profile
+    ).trim();
 
     if (!value) return "N";
 
@@ -538,75 +779,100 @@ export default function MessagesPage() {
       .toUpperCase();
   }
 
+  /*
+   * LOADING
+   */
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-[#050816] text-white">
+        <div className="mx-auto max-w-5xl px-5 py-8">
+          <div className="animate-pulse">
+            <div className="h-5 w-28 rounded bg-white/10" />
+
+            <div className="mt-3 h-9 w-44 rounded bg-white/10" />
+
+            <div className="mt-7 h-12 rounded-2xl bg-white/5" />
+
+            <div className="mt-8 space-y-3">
+              {[1, 2, 3, 4].map(
+                (item) => (
+                  <div
+                    key={item}
+                    className="rounded-2xl border border-white/10 bg-white/[0.035] p-4"
+                  >
+                    <div className="flex gap-3">
+                      <div className="h-12 w-12 rounded-full bg-white/10" />
+
+                      <div className="flex-1">
+                        <div className="h-4 w-32 rounded bg-white/10" />
+
+                        <div className="mt-2 h-3 w-44 rounded bg-white/10" />
+                      </div>
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#050816] pb-24 text-white">
-      {/* Background glow */}
+      {/* Background */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute left-[-120px] top-[-120px] h-72 w-72 rounded-full bg-violet-600/10 blur-[100px]" />
+        <div className="absolute -left-40 top-20 h-80 w-80 rounded-full bg-violet-600/10 blur-3xl" />
 
-        <div className="absolute bottom-[-120px] right-[-120px] h-80 w-80 rounded-full bg-pink-600/10 blur-[110px]" />
+        <div className="absolute -right-40 top-80 h-96 w-96 rounded-full bg-pink-600/10 blur-3xl" />
       </div>
 
       {/* Top header */}
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#050816]/90 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-violet-300">
-              Nikelink
-            </p>
-
-            <h1 className="mt-1 text-2xl font-bold tracking-tight">
-              Messages
-            </h1>
-          </div>
-
-          {/* Notifications */}
-          <button
-            onClick={() =>
-              router.push(
-                "/notifications"
-              )
-            }
-            aria-label="Notifications"
-            className="relative flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-lg transition hover:bg-white/10"
-          >
-            🔔
-
-            {unreadNotifications >
-              0 && (
-              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-pink-500 px-1 text-[10px] font-black text-white shadow-lg shadow-pink-500/30">
-                {unreadNotifications >
-                99
-                  ? "99+"
-                  : unreadNotifications}
-              </span>
-            )}
-          </button>
-        </div>
-      </header>
-
-      <div className="relative mx-auto flex max-w-6xl overflow-hidden border-x border-white/5">
-        {/* Conversation list */}
-        <aside
-          className={`w-full border-r border-white/10 bg-white/[0.015] md:block md:w-[350px] ${
-            selected
-              ? "hidden"
-              : "block"
-          }`}
-        >
-          <div className="border-b border-white/10 p-4">
-            <div className="mb-3">
-              <p className="text-sm font-semibold text-white/90">
-                Your connections
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#050816]/90 backdrop-blur-2xl">
+        <div className="mx-auto max-w-5xl px-5 py-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-violet-400">
+                Nikelink
               </p>
 
-              <p className="mt-1 text-xs text-white/35">
-                Conversations with people you're connected to.
+              <h1 className="mt-1 text-3xl font-black tracking-tight">
+                Messages
+              </h1>
+
+              <p className="mt-1 text-sm text-white/35">
+                Private conversations with your connections.
               </p>
             </div>
 
+            <button
+              onClick={() =>
+                router.push("/profile")
+              }
+              className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-lg transition hover:bg-white/10"
+              aria-label="Open profile"
+            >
+              👤
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main messaging area */}
+      <div className="relative z-10 mx-auto flex max-w-5xl overflow-hidden border-x border-white/10 bg-white/[0.015] md:min-h-[calc(100vh-145px)]">
+              {/* Conversations */}
+      <div className="relative z-10 mx-auto flex max-w-5xl overflow-hidden border-x border-white/10 bg-white/[0.015] md:min-h-[calc(100vh-145px)]">
+        <aside
+          className={`w-full shrink-0 border-r border-white/10 md:w-[340px] ${
+            selected
+              ? "hidden md:block"
+              : "block"
+          }`}
+        >
+          <div className="p-4">
             <div className="relative">
-              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-white/30">
+              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lg text-white/30">
                 ⌕
               </span>
 
@@ -617,51 +883,28 @@ export default function MessagesPage() {
                     event.target.value
                   )
                 }
-                placeholder="Search conversations"
-                className="w-full rounded-2xl border border-white/10 bg-white/5 py-3 pl-10 pr-4 text-sm text-white outline-none placeholder:text-white/25 focus:border-violet-500/60 focus:bg-white/[0.07]"
+                placeholder="Search connections..."
+                className="w-full rounded-2xl border border-white/10 bg-white/[0.04] py-3.5 pl-11 pr-4 text-sm text-white outline-none placeholder:text-white/25 focus:border-violet-500/40"
               />
             </div>
           </div>
 
-          {loading ? (
-            <div className="space-y-3 p-4">
-              {[1, 2, 3, 4].map(
-                (item) => (
-                  <div
-                    key={item}
-                    className="flex animate-pulse gap-3 rounded-2xl border border-white/5 bg-white/[0.03] p-4"
-                  >
-                    <div className="h-12 w-12 rounded-full bg-white/10" />
-
-                    <div className="flex-1 space-y-2">
-                      <div className="h-3 w-28 rounded bg-white/10" />
-
-                      <div className="h-3 w-40 rounded bg-white/5" />
-                    </div>
-                  </div>
-                )
-              )}
-            </div>
-          ) : filteredProfiles.length ===
+          <div className="px-2 pb-6">
+            {filteredProfiles.length ===
             0 ? (
-            <div className="px-8 py-16 text-center">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl border border-white/10 bg-white/5 text-2xl">
-                💬
-              </div>
+              <div className="px-6 py-16 text-center">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-violet-400/20 bg-violet-500/10 text-2xl">
+                  ✉
+                </div>
 
-              <h2 className="mt-5 font-semibold">
-                {search
-                  ? "No conversations found"
-                  : "No connections yet"}
-              </h2>
+                <h2 className="mt-5 font-bold">
+                  No conversations
+                </h2>
 
-              <p className="mt-2 text-sm leading-6 text-white/35">
-                {search
-                  ? "Try another name, username or country."
-                  : "Connect with people on Nikelink and your conversations will appear here."}
-              </p>
+                <p className="mt-2 text-sm leading-6 text-white/30">
+                  Connect with people in Discover to start messaging.
+                </p>
 
-              {!search && (
                 <button
                   onClick={() =>
                     router.push(
@@ -670,123 +913,139 @@ export default function MessagesPage() {
                   }
                   className="mt-5 rounded-xl bg-gradient-to-r from-violet-600 to-pink-500 px-5 py-3 text-sm font-bold"
                 >
-                  Discover people
+                  Find people
                 </button>
-              )}
-            </div>
-          ) : (
-            <div className="p-2">
-              {filteredProfiles.map(
-                (profile) => {
-                  const last =
-                    lastMessage(
-                      profile.id
-                    );
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {filteredProfiles.map(
+                  (profile) => {
+                    const last =
+                      lastMessage(
+                        profile.id
+                      );
 
-                  const active =
-                    selected?.id ===
-                    profile.id;
+                    const unread =
+                      unreadByUser[
+                        profile.id
+                      ] || 0;
 
-                  const unread =
-                    unreadByUser[
-                      profile.id
-                    ] || 0;
+                    const active =
+                      selected?.id ===
+                      profile.id;
 
-                  return (
-                    <button
-                      key={profile.id}
-                      onClick={() =>
-                        openConversation(
-                          profile
-                        )
-                      }
-                      className={`mb-1 flex w-full gap-3 rounded-2xl p-3 text-left transition ${
-                        active
-                          ? "border border-violet-500/30 bg-violet-500/10"
-                          : "border border-transparent hover:bg-white/5"
-                      }`}
-                    >
-                      <div className="relative shrink-0">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 via-blue-500 to-pink-500 text-sm font-bold shadow-lg shadow-violet-900/20">
-                          {initials(
+                    return (
+                      <button
+                        key={profile.id}
+                        onClick={() =>
+                          openConversation(
                             profile
-                          )}
-                        </div>
+                          )
+                        }
+                        className={`w-full rounded-2xl p-3 text-left transition ${
+                          active
+                            ? "bg-violet-500/10"
+                            : "hover:bg-white/[0.04]"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          {/* Avatar */}
+                          <div className="relative shrink-0">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 via-blue-500 to-pink-500 text-sm font-bold">
+                              {initials(
+                                profile
+                              )}
+                            </div>
 
-                        <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#080a18] bg-emerald-400" />
-
-                        {unread > 0 && (
-                          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-pink-500 px-1 text-[9px] font-black text-white shadow-lg shadow-pink-500/30">
-                            {unread > 99
-                              ? "99+"
-                              : unread}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <span
-                            className={`truncate text-sm ${
-                              unread > 0
-                                ? "font-black text-white"
-                                : "font-semibold"
-                            }`}
-                          >
-                            {name(
-                              profile
+                            {isOnline(
+                              profile.id
+                            ) && (
+                              <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-[#080a18] bg-emerald-400 shadow-lg shadow-emerald-400/40" />
                             )}
-                          </span>
 
-                          {last && (
-                            <span
-                              className={`shrink-0 text-[10px] ${
+                            {unread > 0 && (
+                              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-pink-500 px-1 text-[9px] font-black text-white shadow-lg shadow-pink-500/30">
+                                {unread >
+                                99
+                                  ? "99+"
+                                  : unread}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Conversation details */}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <p
+                                className={`truncate text-sm ${
+                                  unread > 0
+                                    ? "font-black text-white"
+                                    : "font-semibold text-white/90"
+                                }`}
+                              >
+                                {name(
+                                  profile
+                                )}
+                              </p>
+
+                              {last && (
+                                <span className="shrink-0 text-[10px] text-white/25">
+                                  {time(
+                                    last.created_at
+                                  )}
+                                </span>
+                              )}
+                            </div>
+
+                            <p
+                              className={`mt-1 truncate text-xs ${
                                 unread > 0
-                                  ? "font-bold text-pink-300"
-                                  : "text-white/25"
+                                  ? "font-semibold text-white/60"
+                                  : "text-white/30"
                               }`}
                             >
-                              {time(
-                                last.created_at
-                              )}
-                            </span>
-                          )}
-                        </div>
+                              {last
+                                ? last.content
+                                : "Start a conversation"}
+                            </p>
 
-                        <div className="mt-1 flex items-center gap-2">
-                          <p
-                            className={`min-w-0 flex-1 truncate text-xs ${
-                              unread > 0
-                                ? "font-semibold text-white/65"
-                                : "text-white/35"
-                            }`}
-                          >
-                            {last
-                              ? last.sender_id ===
-                                userId
-                                ? `You: ${last.content}`
-                                : last.content
-                              : "Start a conversation"}
-                          </p>
+                            <p
+                              className={`mt-1 text-[10px] ${
+                                isOnline(
+                                  profile.id
+                                )
+                                  ? "text-emerald-400"
+                                  : "text-white/20"
+                              }`}
+                            >
+                              {isOnline(
+                                profile.id
+                              )
+                                ? "Online"
+                                : lastSeenText(
+                                    profile
+                                  )}
+                            </p>
+                          </div>
 
                           {unread > 0 && (
-                            <span className="shrink-0 text-[9px] font-black uppercase tracking-wider text-pink-300">
+                            <span className="shrink-0 rounded-full bg-pink-500/10 px-2 py-1 text-[9px] font-black text-pink-400">
                               New
                             </span>
                           )}
                         </div>
-                      </div>
-                    </button>
-                  );
-                }
-              )}
-            </div>
-          )}
+                      </button>
+                    );
+                  }
+                )}
+              </div>
+            )}
+          </div>
         </aside>
 
-                {/* Chat area */}
+        {/* Chat area */}
         <section
-          className={`flex min-h-[calc(100vh-80px)] flex-1 flex-col ${
+          className={`flex min-h-[calc(100vh-145px)] flex-1 flex-col ${
             selected
               ? "flex"
               : "hidden md:flex"
@@ -804,8 +1063,7 @@ export default function MessagesPage() {
                 </h2>
 
                 <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-white/35">
-                  Select a connection to start a private conversation on
-                  Nikelink.
+                  Select a connection to start a private conversation on Nikelink.
                 </p>
               </div>
             </div>
@@ -824,10 +1082,16 @@ export default function MessagesPage() {
 
                 <div className="relative">
                   <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 via-blue-500 to-pink-500 text-sm font-bold">
-                    {initials(selected)}
+                    {initials(
+                      selected
+                    )}
                   </div>
 
-                  <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#080a18] bg-emerald-400" />
+                  {isOnline(
+                    selected.id
+                  ) && (
+                    <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#080a18] bg-emerald-400 shadow-lg shadow-emerald-400/40" />
+                  )}
                 </div>
 
                 <div className="min-w-0 flex-1">
@@ -835,11 +1099,22 @@ export default function MessagesPage() {
                     {name(selected)}
                   </p>
 
-                  <p className="mt-0.5 truncate text-xs text-white/35">
-                    {selected.username
-                      ? `@${selected.username}`
-                      : selected.country ||
-                        "Nikelink connection"}
+                  <p
+                    className={`mt-0.5 truncate text-xs ${
+                      isOnline(
+                        selected.id
+                      )
+                        ? "text-emerald-400"
+                        : "text-white/35"
+                    }`}
+                  >
+                    {isOnline(
+                      selected.id
+                    )
+                      ? "🟢 Online"
+                      : lastSeenText(
+                          selected
+                        )}
                   </p>
                 </div>
 
@@ -853,7 +1128,8 @@ export default function MessagesPage() {
 
               {/* Messages */}
               <div className="flex-1 space-y-3 overflow-y-auto px-4 py-5">
-                {conversation.length === 0 ? (
+                {conversation.length ===
+                0 ? (
                   <div className="flex min-h-[55vh] items-center justify-center text-center">
                     <div>
                       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-violet-400/20 bg-violet-500/10 text-2xl">
@@ -865,48 +1141,61 @@ export default function MessagesPage() {
                       </h3>
 
                       <p className="mt-2 text-sm text-white/35">
-                        Say hello to {name(selected)}.
+                        Say hello to{" "}
+                        {name(
+                          selected
+                        )}
+                        .
                       </p>
                     </div>
                   </div>
                 ) : (
-                  conversation.map((message) => {
-                    const mine =
-                      message.sender_id === userId;
+                  conversation.map(
+                    (message) => {
+                      const mine =
+                        message.sender_id ===
+                        userId;
 
-                    return (
-                      <div
-                        key={message.id}
-                        className={`flex ${
-                          mine
-                            ? "justify-end"
-                            : "justify-start"
-                        }`}
-                      >
+                      return (
                         <div
-                          className={`max-w-[82%] rounded-3xl px-4 py-3 shadow-lg ${
+                          key={
+                            message.id
+                          }
+                          className={`flex ${
                             mine
-                              ? "rounded-br-md bg-gradient-to-br from-violet-600 to-pink-500 shadow-violet-950/20"
-                              : "rounded-bl-md border border-white/10 bg-white/[0.06]"
+                              ? "justify-end"
+                              : "justify-start"
                           }`}
                         >
-                          <p className="break-words text-sm leading-6">
-                            {message.content}
-                          </p>
-
-                          <p
-                            className={`mt-1 text-[10px] ${
+                          <div
+                            className={`max-w-[82%] rounded-3xl px-4 py-3 shadow-lg ${
                               mine
-                                ? "text-white/55"
-                                : "text-white/30"
+                                ? "rounded-br-md bg-gradient-to-br from-violet-600 to-pink-500 shadow-violet-950/20"
+                                : "rounded-bl-md border border-white/10 bg-white/[0.06]"
                             }`}
                           >
-                            {time(message.created_at)}
-                          </p>
+                            <p className="break-words text-sm leading-6">
+                              {
+                                message.content
+                              }
+                            </p>
+
+                            <p
+                              className={`mt-1 text-[10px] ${
+                                mine
+                                  ? "text-white/55"
+                                  : "text-white/30"
+                              }`}
+                            >
+                              {time(
+                                message.created_at
+                              )}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })
+                      );
+                    }
+                  )
                 )}
               </div>
 
@@ -923,11 +1212,17 @@ export default function MessagesPage() {
                   <textarea
                     value={text}
                     onChange={(event) =>
-                      setText(event.target.value)
+                      setText(
+                        event.target
+                          .value
+                      )
                     }
-                    onKeyDown={(event) => {
+                    onKeyDown={(
+                      event
+                    ) => {
                       if (
-                        event.key === "Enter" &&
+                        event.key ===
+                          "Enter" &&
                         !event.shiftKey
                       ) {
                         event.preventDefault();
@@ -940,13 +1235,18 @@ export default function MessagesPage() {
                   />
 
                   <button
-                    onClick={sendMessage}
+                    onClick={
+                      sendMessage
+                    }
                     disabled={
-                      !text.trim() || sending
+                      !text.trim() ||
+                      sending
                     }
                     className="flex h-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-r from-violet-600 to-pink-500 px-4 text-sm font-bold shadow-lg shadow-violet-950/20 transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-30"
                   >
-                    {sending ? "..." : "Send"}
+                    {sending
+                      ? "..."
+                      : "Send"}
                   </button>
                 </div>
 
@@ -964,13 +1264,16 @@ export default function MessagesPage() {
         <div className="mx-auto flex max-w-2xl items-center justify-around px-2 py-2">
           {navItems.map((item) => {
             const active =
-              item.path === "/messages";
+              item.path ===
+              "/messages";
 
             return (
               <button
                 key={item.path}
                 onClick={() =>
-                  router.push(item.path)
+                  router.push(
+                    item.path
+                  )
                 }
                 className={`relative flex min-w-[70px] flex-col items-center gap-1 rounded-2xl px-4 py-2 transition ${
                   active
@@ -982,10 +1285,13 @@ export default function MessagesPage() {
                   {item.icon}
 
                   {/* Unread message badge */}
-                  {item.path === "/messages" &&
-                    unreadMessages > 0 && (
+                  {item.path ===
+                    "/messages" &&
+                    unreadMessages >
+                      0 && (
                       <span className="absolute -right-3 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-pink-500 px-1 text-[9px] font-black leading-none text-white shadow-lg shadow-pink-500/30">
-                        {unreadMessages > 99
+                        {unreadMessages >
+                        99
                           ? "99+"
                           : unreadMessages}
                       </span>
@@ -1002,4 +1308,6 @@ export default function MessagesPage() {
       </nav>
     </main>
   );
-}
+                              }
+        
+     
