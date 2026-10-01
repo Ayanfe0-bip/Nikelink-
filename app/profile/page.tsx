@@ -106,7 +106,6 @@ useEffect(() => {
 }, [userId]);
 
   function toggleInterest(interest: string) {
-  function toggleInterest(interest: string) {
     setInterests((current) =>
       current.includes(interest)
         ? current.filter((item) => item !== interest)
