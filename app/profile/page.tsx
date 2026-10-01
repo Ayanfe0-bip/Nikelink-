@@ -104,7 +104,31 @@ useEffect(() => {
 
   loadUnreadNotifications();
 }, [userId]);
+useEffect(() => {
+  if (!userId) return;
 
+  const channel = supabase
+    .channel(`profile-notifications-${userId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "notification",
+        filter: `user_id=eq.${userId}`,
+      },
+      () => {
+        setUnreadNotifications(
+          (current) => current + 1
+        );
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, [userId]);
   function toggleInterest(interest: string) {
     setInterests((current) =>
       current.includes(interest)
