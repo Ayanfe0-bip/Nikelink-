@@ -24,6 +24,48 @@ const interestOptions = [
   "Fitness",
 ];
 
+type PublicProfile = {
+  id: string;
+  full_name: string | null;
+  username: string | null;
+  country: string | null;
+  bio: string | null;
+  age_group: string | null;
+  interests: string[] | null;
+  avatar_url: string | null;
+};
+
+type PublicPost = {
+  id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+};
+
+type Connection = {
+  id: string;
+  requester_id: string;
+  receiver_id: string;
+  status:
+    | "pending"
+    | "accepted"
+    | "declined";
+};
+
+type PostLike = {
+  id: string;
+  post_id: string;
+  user_id: string;
+};
+
+type PostComment = {
+  id: string;
+  post_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+};
+
 export default function ProfilePage() {
   const router = useRouter();
 
@@ -31,65 +73,184 @@ export default function ProfilePage() {
     useRef<HTMLInputElement | null>(null);
 
   const [userId, setUserId] = useState("");
+  const [profileUserId, setProfileUserId] =
+    useState("");
+
+  const [isPublicProfile, setIsPublicProfile] =
+    useState(false);
+
   const [unreadNotifications, setUnreadNotifications] =
     useState(0);
+
   const [email, setEmail] = useState("");
 
-  const [fullName, setFullName] = useState("");
-  const [username, setUsername] = useState("");
-  const [country, setCountry] = useState("");
-  const [bio, setBio] = useState("");
-  const [ageGroup, setAgeGroup] = useState("");
+  const [fullName, setFullName] =
+    useState("");
+  const [username, setUsername] =
+    useState("");
+  const [country, setCountry] =
+    useState("");
+  const [bio, setBio] =
+    useState("");
+  const [ageGroup, setAgeGroup] =
+    useState("");
   const [interests, setInterests] =
     useState<string[]>([]);
-  const [avatarUrl, setAvatarUrl] = useState("");
+  const [avatarUrl, setAvatarUrl] =
+    useState("");
 
   /* SOCIAL STATS */
   const [connectionCount, setConnectionCount] =
     useState(0);
-  const [postCount, setPostCount] = useState(0);
+  const [postCount, setPostCount] =
+    useState(0);
   const [communityCount, setCommunityCount] =
     useState(0);
   const [statsLoading, setStatsLoading] =
     useState(true);
 
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  /* PUBLIC PROFILE */
+  const [publicProfile, setPublicProfile] =
+    useState<PublicProfile | null>(null);
+
+  const [publicPosts, setPublicPosts] =
+    useState<PublicPost[]>([]);
+
+  const [publicLikes, setPublicLikes] =
+    useState<PostLike[]>([]);
+
+  const [publicComments, setPublicComments] =
+    useState<PostComment[]>([]);
+
+  const [publicConnections, setPublicConnections] =
+    useState<Connection[]>([]);
+
+  const [publicLoading, setPublicLoading] =
+    useState(false);
+
+  const [publicStatsLoading, setPublicStatsLoading] =
+    useState(false);
+
+  const [publicPostLoading, setPublicPostLoading] =
+    useState(false);
+
+  const [connectionAction, setConnectionAction] =
+    useState(false);
+
+  const [openComments, setOpenComments] =
+    useState<Record<string, boolean>>({});
+
+  const [commentText, setCommentText] =
+    useState<Record<string, string>>({});
+
+  const [commentingPost, setCommentingPost] =
+    useState<string | null>(null);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [saving, setSaving] =
+    useState(false);
+
   const [uploadingAvatar, setUploadingAvatar] =
     useState(false);
-  const [message, setMessage] = useState("");
 
+  const [message, setMessage] =
+    useState("");
+
+  /*
+   * LOAD CURRENT USER
+   */
   useEffect(() => {
     async function loadProfile() {
       const {
         data: userData,
         error: userError,
-      } = await supabase.auth.getUser();
+      } =
+        await supabase.auth.getUser();
 
-      if (userError || !userData.user) {
+      if (
+        userError ||
+        !userData.user
+      ) {
         router.replace("/login");
         return;
       }
 
-      const user = userData.user;
+      const user =
+        userData.user;
 
       setUserId(user.id);
       setEmail(user.email ?? "");
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .maybeSingle();
+      /*
+       * Detect whether another user's
+       * profile was requested.
+       */
+      const params =
+        new URLSearchParams(
+          window.location.search
+        );
+
+      const requestedUser =
+        params.get("user");
+
+      const viewingPublicProfile =
+        Boolean(
+          requestedUser &&
+            requestedUser !== user.id
+        );
+
+      setIsPublicProfile(
+        viewingPublicProfile
+      );
+
+      if (viewingPublicProfile) {
+        setProfileUserId(
+          requestedUser!
+        );
+
+        setLoading(false);
+        return;
+      }
+
+      setProfileUserId(user.id);
+
+      const { data: profile } =
+        await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .maybeSingle();
 
       if (profile) {
-        setFullName(profile.full_name ?? "");
-        setUsername(profile.username ?? "");
-        setCountry(profile.country ?? "");
-        setBio(profile.bio ?? "");
-        setAgeGroup(profile.age_group ?? "");
-        setInterests(profile.interests ?? []);
-        setAvatarUrl(profile.avatar_url ?? "");
+        setFullName(
+          profile.full_name ?? ""
+        );
+
+        setUsername(
+          profile.username ?? ""
+        );
+
+        setCountry(
+          profile.country ?? ""
+        );
+
+        setBio(
+          profile.bio ?? ""
+        );
+
+        setAgeGroup(
+          profile.age_group ?? ""
+        );
+
+        setInterests(
+          profile.interests ?? []
+        );
+
+        setAvatarUrl(
+          profile.avatar_url ?? ""
+        );
       }
 
       setLoading(false);
@@ -98,9 +259,222 @@ export default function ProfilePage() {
     loadProfile();
   }, [router]);
 
-  /* LOAD SOCIAL STATS */
+  /*
+   * LOAD PUBLIC PROFILE
+   */
   useEffect(() => {
-    if (!userId) return;
+    if (
+      !isPublicProfile ||
+      !profileUserId
+    ) {
+      return;
+    }
+
+    async function loadPublicProfile() {
+      setPublicLoading(true);
+      setPublicStatsLoading(true);
+      setPublicPostLoading(true);
+
+      try {
+        const [
+          profileResult,
+          connectionsResult,
+          postsResult,
+          communitiesResult,
+        ] = await Promise.all([
+          supabase
+            .from("profiles")
+            .select(
+              "id, full_name, username, country, bio, age_group, interests, avatar_url"
+            )
+            .eq("id", profileUserId)
+            .maybeSingle(),
+
+          supabase
+            .from("connection")
+            .select(
+              "id, requester_id, receiver_id, status"
+            )
+            .eq("status", "accepted")
+            .or(
+              `requester_id.eq.${profileUserId},receiver_id.eq.${profileUserId}`
+            ),
+
+          supabase
+            .from("posts")
+            .select(
+              "id, user_id, content, created_at"
+            )
+            .eq(
+              "user_id",
+              profileUserId
+            )
+            .order(
+              "created_at",
+              {
+                ascending: false,
+              }
+            ),
+
+          supabase
+            .from("community_members")
+            .select("id", {
+              count: "exact",
+              head: true,
+            })
+            .eq(
+              "user_id",
+              profileUserId
+            ),
+        ]);
+
+        if (
+          profileResult.error ||
+          !profileResult.data
+        ) {
+          setMessage(
+            "This profile could not be found."
+          );
+          return;
+        }
+
+        setPublicProfile(
+          profileResult.data as PublicProfile
+        );
+
+        if (
+          !connectionsResult.error
+        ) {
+          setPublicConnections(
+            (connectionsResult.data ||
+              []) as Connection[]
+          );
+        }
+
+        if (
+          !postsResult.error
+        ) {
+          const posts =
+            (postsResult.data ||
+              []) as PublicPost[];
+
+          setPublicPosts(posts);
+
+          setPostCount(
+            posts.length
+          );
+
+          /*
+           * Load likes and comments
+           * for this user's posts.
+           */
+          if (posts.length > 0) {
+            const postIds =
+              posts.map(
+                (post) => post.id
+              );
+
+            const [
+              likesResult,
+              commentsResult,
+            ] =
+              await Promise.all([
+                supabase
+                  .from(
+                    "likes"
+                  )
+                  .select(
+                    "id, post_id, user_id"
+                  )
+                  .in(
+                    "post_id",
+                    postIds
+                  ),
+
+                supabase
+                  .from(
+                    "comments"
+                  )
+                  .select(
+                    "id, post_id, user_id, content, created_at"
+                  )
+                  .in(
+                    "post_id",
+                    postIds
+                  )
+                  .order(
+                    "created_at",
+                    {
+                      ascending: true,
+                    }
+                  ),
+              ]);
+
+            if (
+              !likesResult.error
+            ) {
+              setPublicLikes(
+                (likesResult.data ||
+                  []) as PostLike[]
+              );
+            }
+
+            if (
+              !commentsResult.error
+            ) {
+              setPublicComments(
+                (commentsResult.data ||
+                  []) as PostComment[]
+              );
+            }
+          }
+        }
+
+        setConnectionCount(
+          connectionsResult.error
+            ? 0
+            : (
+                connectionsResult.data ||
+                []
+              ).length
+        );
+
+        setCommunityCount(
+          communitiesResult.count ||
+            0
+        );
+      } catch (error) {
+        console.error(
+          "Public profile error:",
+          error
+        );
+
+        setMessage(
+          "Something went wrong while loading this profile."
+        );
+      }
+
+      setPublicLoading(false);
+      setPublicStatsLoading(false);
+      setPublicPostLoading(false);
+    }
+
+    loadPublicProfile();
+  }, [
+    isPublicProfile,
+    profileUserId,
+  ]);
+
+  /*
+   * LOAD OWN SOCIAL STATS
+   */
+  useEffect(() => {
+    if (
+      !userId ||
+      isPublicProfile
+    ) {
+      return;
+    }
 
     async function loadSocialStats() {
       setStatsLoading(true);
@@ -117,7 +491,10 @@ export default function ProfilePage() {
               count: "exact",
               head: true,
             })
-            .eq("status", "accepted")
+            .eq(
+              "status",
+              "accepted"
+            )
             .or(
               `requester_id.eq.${userId},receiver_id.eq.${userId}`
             ),
@@ -128,32 +505,49 @@ export default function ProfilePage() {
               count: "exact",
               head: true,
             })
-            .eq("user_id", userId),
+            .eq(
+              "user_id",
+              userId
+            ),
 
           supabase
-            .from("community_members")
+            .from(
+              "community_members"
+            )
             .select("id", {
               count: "exact",
               head: true,
             })
-            .eq("user_id", userId),
+            .eq(
+              "user_id",
+              userId
+            ),
         ]);
 
-        if (!connectionsResult.error) {
+        if (
+          !connectionsResult.error
+        ) {
           setConnectionCount(
-            connectionsResult.count || 0
+            connectionsResult.count ||
+              0
           );
         }
 
-        if (!postsResult.error) {
+        if (
+          !postsResult.error
+        ) {
           setPostCount(
-            postsResult.count || 0
+            postsResult.count ||
+              0
           );
         }
 
-        if (!communitiesResult.error) {
+        if (
+          !communitiesResult.error
+        ) {
           setCommunityCount(
-            communitiesResult.count || 0
+            communitiesResult.count ||
+              0
           );
         }
       } catch (error) {
@@ -167,23 +561,41 @@ export default function ProfilePage() {
     }
 
     loadSocialStats();
-  }, [userId]);
+  }, [
+    userId,
+    isPublicProfile,
+  ]);
 
-  /* UNREAD NOTIFICATIONS */
+  /*
+   * UNREAD NOTIFICATIONS
+   */
   useEffect(() => {
-    if (!userId) return;
+    if (
+      !userId ||
+      isPublicProfile
+    ) {
+      return;
+    }
 
     const loadUnreadNotifications =
       async () => {
-        const { count, error } =
-          await supabase
-            .from("notification")
-            .select("*", {
-              count: "exact",
-              head: true,
-            })
-            .eq("user_id", userId)
-            .eq("is_read", false);
+        const {
+          count,
+          error,
+        } = await supabase
+          .from("notification")
+          .select("*", {
+            count: "exact",
+            head: true,
+          })
+          .eq(
+            "user_id",
+            userId
+          )
+          .eq(
+            "is_read",
+            false
+          );
 
         if (!error) {
           setUnreadNotifications(
@@ -193,60 +605,97 @@ export default function ProfilePage() {
       };
 
     loadUnreadNotifications();
-  }, [userId]);
+  }, [
+    userId,
+    isPublicProfile,
+  ]);
 
-  /* REALTIME NOTIFICATIONS */
+  /*
+   * REALTIME NOTIFICATIONS
+   */
   useEffect(() => {
-    if (!userId) return;
+    if (
+      !userId ||
+      isPublicProfile
+    ) {
+      return;
+    }
 
-    const channel = supabase
-      .channel(
-        `profile-notifications-${userId}`
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "notification",
-          filter: `user_id=eq.${userId}`,
-        },
-        () => {
-          setUnreadNotifications(
-            (current) => current + 1
-          );
-        }
-      )
-      .subscribe();
+    const channel =
+      supabase
+        .channel(
+          `profile-notifications-${userId}`
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "notification",
+            filter: `user_id=eq.${userId}`,
+          },
+          () => {
+            setUnreadNotifications(
+              (current) =>
+                current + 1
+            );
+          }
+        )
+        .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(
+        channel
+      );
     };
-  }, [userId]);
+  }, [
+    userId,
+    isPublicProfile,
+  ]);
 
+  /*
+   * INTEREST TOGGLE
+   */
   function toggleInterest(
     interest: string
   ) {
-    setInterests((current) =>
-      current.includes(interest)
-        ? current.filter(
-            (item) => item !== interest
-          )
-        : [...current, interest]
+    setInterests(
+      (current) =>
+        current.includes(interest)
+          ? current.filter(
+              (item) =>
+                item !== interest
+            )
+          : [
+              ...current,
+              interest,
+            ]
     );
   }
 
+  /*
+   * AVATAR UPLOAD
+   */
   async function handleAvatarChange(
     event: React.ChangeEvent<HTMLInputElement>
   ) {
     const file =
       event.target.files?.[0];
 
-    if (!file || !userId) return;
+    if (
+      !file ||
+      !userId
+    ) {
+      return;
+    }
 
     setMessage("");
 
-    if (!file.type.startsWith("image/")) {
+    if (
+      !file.type.startsWith(
+        "image/"
+      )
+    ) {
       setMessage(
         "Please select an image file."
       );
@@ -263,7 +712,9 @@ export default function ProfilePage() {
       return;
     }
 
-    setUploadingAvatar(true);
+    setUploadingAvatar(
+      true
+    );
 
     try {
       const fileExtension =
@@ -273,68 +724,88 @@ export default function ProfilePage() {
           ?.toLowerCase() ||
         "jpg";
 
-      const fileName = `${Date.now()}-${Math.random()
-        .toString(36)
-        .substring(
-          2,
-          10
-        )}.${fileExtension}`;
+      const fileName =
+        `${Date.now()}-${Math.random()
+          .toString(36)
+          .substring(
+            2,
+            10
+          )}.${fileExtension}`;
 
-      const filePath = `${userId}/${fileName}`;
+      const filePath =
+        `${userId}/${fileName}`;
 
       const {
-        error: uploadError,
-      } = await supabase.storage
-        .from("avatars")
-        .upload(
-          filePath,
-          file,
-          {
-            cacheControl: "3600",
-            upsert: false,
-            contentType:
-              file.type,
-          }
-        );
+        error:
+          uploadError,
+      } =
+        await supabase.storage
+          .from("avatars")
+          .upload(
+            filePath,
+            file,
+            {
+              cacheControl:
+                "3600",
+              upsert: false,
+              contentType:
+                file.type,
+            }
+          );
 
       if (uploadError) {
         setMessage(
           uploadError.message
         );
-        setUploadingAvatar(false);
+        setUploadingAvatar(
+          false
+        );
         return;
       }
 
       const {
-        data: publicUrlData,
-      } = supabase.storage
-        .from("avatars")
-        .getPublicUrl(filePath);
+        data:
+          publicUrlData,
+      } =
+        supabase.storage
+          .from("avatars")
+          .getPublicUrl(
+            filePath
+          );
 
       const newAvatarUrl =
         publicUrlData.publicUrl;
 
       const {
-        error: profileError,
-      } = await supabase
-        .from("profiles")
-        .update({
-          avatar_url:
-            newAvatarUrl,
-          updated_at:
-            new Date().toISOString(),
-        })
-        .eq("id", userId);
+        error:
+          profileError,
+      } =
+        await supabase
+          .from("profiles")
+          .update({
+            avatar_url:
+              newAvatarUrl,
+            updated_at:
+              new Date().toISOString(),
+          })
+          .eq(
+            "id",
+            userId
+          );
 
       if (profileError) {
         setMessage(
           profileError.message
         );
-        setUploadingAvatar(false);
+        setUploadingAvatar(
+          false
+        );
         return;
       }
 
-      setAvatarUrl(newAvatarUrl);
+      setAvatarUrl(
+        newAvatarUrl
+      );
 
       setMessage(
         "Profile picture updated successfully."
@@ -347,14 +818,21 @@ export default function ProfilePage() {
       );
     }
 
-    setUploadingAvatar(false);
+    setUploadingAvatar(
+      false
+    );
 
-    if (fileInputRef.current) {
+    if (
+      fileInputRef.current
+    ) {
       fileInputRef.current.value =
         "";
     }
   }
 
+  /*
+   * SAVE OWN PROFILE
+   */
   async function handleSave(
     e: React.FormEvent<HTMLFormElement>
   ) {
@@ -370,7 +848,9 @@ export default function ProfilePage() {
         .trim()
         .toLowerCase();
 
-    const { error } =
+    const {
+      error,
+    } =
       await supabase
         .from("profiles")
         .upsert({
@@ -411,28 +891,466 @@ export default function ProfilePage() {
     setSaving(false);
   }
 
+  /*
+   * SIGN OUT
+   */
   async function handleSignOut() {
     await supabase.auth.signOut();
     router.replace("/login");
   }
 
-  const initials = useMemo(() => {
-    const name =
-      fullName.trim();
+  /*
+   * GET CONNECTION BETWEEN
+   * CURRENT USER AND PUBLIC USER
+   */
+  function getPublicConnection() {
+    return publicConnections.find(
+      (connection) =>
+        (connection.requester_id ===
+          userId &&
+          connection.receiver_id ===
+            profileUserId) ||
+        (connection.receiver_id ===
+          userId &&
+          connection.requester_id ===
+            profileUserId)
+    );
+  }
 
-    if (!name) return "N";
+  /*
+   * CONNECTION STATE
+   */
+  function getConnectionState() {
+    const connection =
+      getPublicConnection();
 
-    return name
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((word) =>
-        word
-          .charAt(0)
-          .toUpperCase()
-      )
-      .join("");
-  }, [fullName]);
+    if (!connection) {
+      return "connect";
+    }
 
+    if (
+      connection.status ===
+      "accepted"
+    ) {
+      return "connected";
+    }
+
+    if (
+      connection.status ===
+        "pending" &&
+      connection.requester_id ===
+        userId
+    ) {
+      return "sent";
+    }
+
+    if (
+      connection.status ===
+        "pending" &&
+      connection.receiver_id ===
+        userId
+    ) {
+      return "incoming";
+    }
+
+    return "connect";
+  }
+
+  /*
+   * SEND CONNECTION REQUEST
+   */
+  async function handleConnect() {
+    if (
+      !userId ||
+      !profileUserId ||
+      connectionAction
+    ) {
+      return;
+    }
+
+    setConnectionAction(
+      true
+    );
+    setMessage("");
+
+    const existing =
+      getPublicConnection();
+
+    if (
+      existing &&
+      existing.status !==
+        "declined"
+    ) {
+      setConnectionAction(
+        false
+      );
+      return;
+    }
+
+    if (
+      existing &&
+      existing.status ===
+        "declined"
+    ) {
+      await supabase
+        .from("connection")
+        .delete()
+        .eq(
+          "id",
+          existing.id
+        );
+    }
+
+    const {
+      data,
+      error,
+    } =
+      await supabase
+        .from("connection")
+        .insert({
+          requester_id:
+            userId,
+          receiver_id:
+            profileUserId,
+          status:
+            "pending",
+        })
+        .select()
+        .single();
+
+    if (error) {
+      setMessage(
+        error.message
+      );
+    } else if (data) {
+      setPublicConnections(
+        (current) => [
+          ...current.filter(
+            (item) =>
+              item.id !==
+              existing?.id
+          ),
+          data as Connection,
+        ]
+      );
+    }
+
+    setConnectionAction(
+      false
+    );
+  }
+
+  /*
+   * ACCEPT INCOMING REQUEST
+   */
+  async function handleAccept() {
+    const connection =
+      getPublicConnection();
+
+    if (
+      !connection ||
+      connectionAction
+    ) {
+      return;
+    }
+
+    setConnectionAction(
+      true
+    );
+
+    const {
+      data,
+      error,
+    } =
+      await supabase
+        .from("connection")
+        .update({
+          status:
+            "accepted",
+        })
+        .eq(
+          "id",
+          connection.id
+        )
+                .select()
+        .single();
+
+    if (error) {
+      setMessage(error.message);
+    } else if (data) {
+      setPublicConnections((current) =>
+        current.map((item) =>
+          item.id === connection.id
+            ? (data as Connection)
+            : item
+        )
+      );
+
+      setConnectionCount((current) =>
+        current + 1
+      );
+    }
+
+    setConnectionAction(false);
+  }
+
+  /*
+   * FORMAT DATE
+   */
+  function formatDate(date: string) {
+    const created = new Date(date);
+    const now = new Date();
+
+    const difference = Math.floor(
+      (now.getTime() -
+        created.getTime()) /
+        1000
+    );
+
+    if (difference < 60) {
+      return "Just now";
+    }
+
+    if (difference < 3600) {
+      return `${Math.floor(
+        difference / 60
+      )}m`;
+    }
+
+    if (difference < 86400) {
+      return `${Math.floor(
+        difference / 3600
+      )}h`;
+    }
+
+    if (difference < 604800) {
+      return `${Math.floor(
+        difference / 86400
+      )}d`;
+    }
+
+    return created.toLocaleDateString();
+  }
+
+  /*
+   * PUBLIC POST HELPERS
+   */
+  function getPostLikes(
+    postId: string
+  ) {
+    return publicLikes.filter(
+      (like) =>
+        like.post_id === postId
+    );
+  }
+
+  function getPostComments(
+    postId: string
+  ) {
+    return publicComments.filter(
+      (comment) =>
+        comment.post_id === postId
+    );
+  }
+
+  /*
+   * TOGGLE PUBLIC POST LIKE
+   */
+  async function togglePublicLike(
+    postId: string
+  ) {
+    if (!userId) return;
+
+    const existing =
+      publicLikes.find(
+        (like) =>
+          like.post_id ===
+            postId &&
+          like.user_id ===
+            userId
+      );
+
+    if (existing) {
+      const { error } =
+        await supabase
+          .from("likes")
+          .delete()
+          .eq(
+            "id",
+            existing.id
+          );
+
+      if (error) {
+        setMessage(
+          error.message
+        );
+        return;
+      }
+
+      setPublicLikes(
+        (current) =>
+          current.filter(
+            (like) =>
+              like.id !==
+              existing.id
+          )
+      );
+
+      return;
+    }
+
+    const {
+      data,
+      error,
+    } =
+      await supabase
+        .from("likes")
+        .insert({
+          post_id:
+            postId,
+          user_id:
+            userId,
+        })
+        .select(
+          "id, post_id, user_id"
+        )
+        .single();
+
+    if (error) {
+      setMessage(
+        error.message
+      );
+      return;
+    }
+
+    if (data) {
+      setPublicLikes(
+        (current) => [
+          ...current,
+          data as PostLike,
+        ]
+      );
+    }
+  }
+
+  /*
+   * SUBMIT PUBLIC PROFILE COMMENT
+   */
+  async function submitPublicComment(
+    postId: string
+  ) {
+    const content =
+      (
+        commentText[
+          postId
+        ] || ""
+      ).trim();
+
+    if (
+      !content ||
+      !userId ||
+      commentingPost
+    ) {
+      return;
+    }
+
+    setCommentingPost(
+      postId
+    );
+    setMessage("");
+
+    const {
+      data,
+      error,
+    } =
+      await supabase
+        .from("comments")
+        .insert({
+          post_id:
+            postId,
+          user_id:
+            userId,
+          content,
+        })
+        .select(
+          "id, post_id, user_id, content, created_at"
+        )
+        .single();
+
+    if (error) {
+      setMessage(
+        error.message
+      );
+      setCommentingPost(
+        null
+      );
+      return;
+    }
+
+    if (data) {
+      setPublicComments(
+        (current) => [
+          ...current,
+          data as PostComment,
+        ]
+      );
+    }
+
+    setCommentText(
+      (current) => ({
+        ...current,
+        [postId]:
+          "",
+      })
+    );
+
+    setOpenComments(
+      (current) => ({
+        ...current,
+        [postId]:
+          true,
+      })
+    );
+
+    setCommentingPost(
+      null
+    );
+  }
+
+  /*
+   * INITIALS
+   */
+  const initials =
+    useMemo(() => {
+      const name =
+        (
+          isPublicProfile
+            ? publicProfile?.full_name
+            : fullName
+        )?.trim() || "";
+
+      if (!name) {
+        return "N";
+      }
+
+      return name
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((word) =>
+          word
+            .charAt(0)
+            .toUpperCase()
+        )
+        .join("");
+    }, [
+      fullName,
+      publicProfile,
+      isPublicProfile,
+    ]);
+
+  /*
+   * PROFILE COMPLETION
+   */
   const completionItems = [
     fullName.trim(),
     username.trim(),
@@ -455,6 +1373,9 @@ export default function ProfilePage() {
         100
     );
 
+  /*
+   * LOADING
+   */
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#050816] text-white">
@@ -462,12 +1383,715 @@ export default function ProfilePage() {
           <div className="mx-auto mb-4 h-12 w-12 animate-pulse rounded-2xl bg-gradient-to-br from-blue-500/40 to-violet-600/40" />
 
           <p className="text-sm text-white/45">
-            Loading your profile...
+            Loading profile...
           </p>
         </div>
       </main>
     );
   }
+
+  /*
+   * PUBLIC PROFILE VIEW
+   */
+  if (isPublicProfile) {
+    const profile =
+      publicProfile;
+
+    const connectionState =
+      getConnectionState();
+
+    return (
+      <main className="min-h-screen bg-[#050816] pb-24 text-white sm:pb-10">
+
+        {/* BACKGROUND */}
+
+        <div className="pointer-events-none fixed inset-0 overflow-hidden">
+          <div className="absolute -left-40 -top-40 h-[420px] w-[420px] rounded-full bg-blue-600/10 blur-[130px]" />
+
+          <div className="absolute right-[-140px] top-[25%] h-[450px] w-[450px] rounded-full bg-violet-600/10 blur-[150px]" />
+
+          <div className="absolute bottom-[-180px] left-[25%] h-[400px] w-[400px] rounded-full bg-cyan-500/5 blur-[140px]" />
+        </div>
+
+        {/* TOP BAR */}
+
+        <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#050816]/80 backdrop-blur-2xl">
+          <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-5 sm:px-8">
+
+            <button
+              onClick={() =>
+                router.back()
+              }
+              className="flex items-center gap-3"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 via-violet-600 to-fuchsia-600 text-sm font-black shadow-lg shadow-blue-500/20">
+                ←
+              </div>
+
+              <span className="text-sm font-bold text-white/70">
+                Back
+              </span>
+            </button>
+
+            <button
+              onClick={() =>
+                router.push(
+                  "/profile"
+                )
+              }
+              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-white/60"
+            >
+              My profile
+            </button>
+          </div>
+        </header>
+
+        <div className="relative mx-auto max-w-5xl px-5 pt-7 sm:px-8 sm:pt-10">
+
+          {publicLoading ||
+          !profile ? (
+            <div className="rounded-[2rem] border border-white/10 bg-white/[0.035] p-10 text-center">
+              <p className="text-sm text-white/40">
+                {message ||
+                  "Loading profile..."}
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* PUBLIC PROFILE HERO */}
+
+              <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.035] p-6 shadow-2xl shadow-black/20 sm:p-8">
+
+                <div className="absolute -right-24 -top-28 h-72 w-72 rounded-full bg-blue-600/10 blur-[100px]" />
+
+                <div className="relative">
+
+                  <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+
+                    <div className="flex min-w-0 items-center gap-5">
+
+                      {profile.avatar_url ? (
+                        <img
+                          src={
+                            profile.avatar_url
+                          }
+                          alt={
+                            profile.full_name ||
+                            profile.username ||
+                            "Nikelink user"
+                          }
+                          className="h-24 w-24 shrink-0 rounded-[1.7rem] object-cover ring-2 ring-blue-500/30 shadow-xl shadow-blue-500/10"
+                        />
+                      ) : (
+                        <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-[1.7rem] bg-gradient-to-br from-blue-500 via-violet-600 to-fuchsia-600 text-3xl font-black shadow-xl shadow-blue-500/20">
+                          {initials}
+                        </div>
+                      )}
+
+                      <div className="min-w-0">
+
+                        <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.2em] text-blue-400">
+                          Nikelink profile
+                        </p>
+
+                        <h1 className="truncate text-2xl font-black tracking-tight sm:text-3xl">
+                          {profile.full_name ||
+                            "Nikelink user"}
+                        </h1>
+
+                        {profile.username && (
+                          <p className="mt-1 truncate text-sm text-white/40">
+                            @{profile.username}
+                          </p>
+                        )}
+
+                        {profile.country && (
+                          <p className="mt-2 text-sm text-white/45">
+                            🌍{" "}
+                            {profile.country}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* CONNECTION ACTION */}
+
+                    <div className="w-full sm:w-48">
+
+                      {connectionState ===
+                        "connect" && (
+                        <button
+                          onClick={
+                            handleConnect
+                          }
+                          disabled={
+                            connectionAction
+                          }
+                          className="w-full rounded-xl bg-gradient-to-r from-blue-600 via-violet-600 to-fuchsia-600 px-5 py-3 text-sm font-bold shadow-xl shadow-blue-600/10 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {connectionAction
+                            ? "Sending..."
+                            : "Connect"}
+                        </button>
+                      )}
+
+                      {connectionState ===
+                        "sent" && (
+                        <button
+                          disabled
+                          className="w-full rounded-xl border border-violet-500/20 bg-violet-500/10 px-5 py-3 text-sm font-bold text-violet-300"
+                        >
+                          ✓ Request Sent
+                        </button>
+                      )}
+
+                      {connectionState ===
+                        "incoming" && (
+                        <button
+                          onClick={
+                            handleAccept
+                          }
+                          disabled={
+                            connectionAction
+                          }
+                          className="w-full rounded-xl bg-gradient-to-r from-violet-600 to-blue-600 px-5 py-3 text-sm font-bold disabled:opacity-50"
+                        >
+                          {connectionAction
+                            ? "Accepting..."
+                            : "Accept Request"}
+                        </button>
+                      )}
+
+                      {connectionState ===
+                        "connected" && (
+                        <button
+                          onClick={() =>
+                            router.push(
+                              `/messages?user=${profile.id}`
+                            )
+                          }
+                          className="w-full rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-5 py-3 text-sm font-bold text-emerald-300 transition hover:bg-emerald-500/15"
+                        >
+                          ✓ Connected · Message
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* BIO */}
+
+                  {profile.bio && (
+                    <div className="mt-7 border-t border-white/[0.07] pt-6">
+                      <p className="max-w-3xl text-sm leading-7 text-white/55">
+                        {profile.bio}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* INTERESTS */}
+
+                  {profile.interests &&
+                    profile.interests.length >
+                      0 && (
+                      <div className="mt-5 flex flex-wrap gap-2">
+                        {profile.interests.map(
+                          (interest) => (
+                            <span
+                              key={interest}
+                              className="rounded-full border border-blue-400/15 bg-blue-500/10 px-3 py-1.5 text-xs font-semibold text-blue-300"
+                            >
+                              {interest}
+                            </span>
+                          )
+                        )}
+                      </div>
+                    )}
+                </div>
+              </section>
+
+              {/* PUBLIC SOCIAL STATS */}
+
+              <section className="mt-6 grid grid-cols-3 gap-3 sm:gap-5">
+
+                <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-center shadow-xl shadow-black/10 sm:p-5">
+                  <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-violet-500/10 text-xl">
+                    👥
+                  </div>
+
+                  <p className="mt-3 text-xl font-black sm:text-2xl">
+                    {publicStatsLoading ? (
+                      <span className="inline-block h-6 w-8 animate-pulse rounded bg-white/10" />
+                    ) : (
+                      connectionCount
+                    )}
+                  </p>
+
+                  <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-white/35 sm:text-xs">
+                    Connections
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-center shadow-xl shadow-black/10 sm:p-5">
+                  <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 text-xl">
+                    📝
+                  </div>
+
+                  <p className="mt-3 text-xl font-black sm:text-2xl">
+                    {publicStatsLoading ? (
+                      <span className="inline-block h-6 w-8 animate-pulse rounded bg-white/10" />
+                    ) : (
+                      postCount
+                    )}
+                  </p>
+
+                  <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-white/35 sm:text-xs">
+                    Posts
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-center shadow-xl shadow-black/10 sm:p-5">
+                  <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-500/10 text-xl">
+                    🌍
+                  </div>
+
+                  <p className="mt-3 text-xl font-black sm:text-2xl">
+                    {publicStatsLoading ? (
+                      <span className="inline-block h-6 w-8 animate-pulse rounded bg-white/10" />
+                    ) : (
+                      communityCount
+                    )}
+                  </p>
+
+                  <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-white/35 sm:text-xs">
+                    Communities
+                  </p>
+                </div>
+              </section>
+
+              {/* PUBLIC MESSAGE */}
+
+              {message && (
+                <div className="mt-6 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-center text-sm text-white/55">
+                  {message}
+                </div>
+              )}
+
+              {/* PUBLIC POSTS */}
+
+              <section className="mt-9">
+
+                <div className="mb-5">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-400">
+                    Activity
+                  </p>
+
+                  <h2 className="mt-2 text-2xl font-black tracking-tight">
+                    Posts
+                  </h2>
+
+                  <p className="mt-2 text-sm text-white/40">
+                    Recent posts shared by{" "}
+                    {profile.full_name ||
+                      "this user"}.
+                  </p>
+                </div>
+
+                {publicPostLoading ? (
+                  <div className="rounded-[2rem] border border-white/10 bg-white/[0.035] p-10 text-center">
+                    <p className="text-sm text-white/40">
+                      Loading posts...
+                    </p>
+                  </div>
+                ) : publicPosts.length ===
+                  0 ? (
+                  <div className="rounded-[2rem] border border-white/10 bg-white/[0.035] p-10 text-center">
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600/20 to-violet-600/20 text-3xl">
+                      📝
+                    </div>
+
+                    <h3 className="mt-5 text-lg font-black">
+                      No posts yet
+                    </h3>
+
+                    <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-white/40">
+                      This user has not shared any posts yet.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-5">
+
+                    {publicPosts.map(
+                      (post) => {
+                        const postLikes =
+                          getPostLikes(
+                            post.id
+                          );
+
+                        const postComments =
+                          getPostComments(
+                            post.id
+                          );
+
+                        const userLiked =
+                          postLikes.some(
+                            (like) =>
+                              like.user_id ===
+                              userId
+                          );
+
+                        return (
+                          <article
+                            key={post.id}
+                            className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.035] shadow-xl shadow-black/10"
+                          >
+
+                                                        {/* POST HEADER */}
+
+                            <div className="flex items-center gap-3 p-5">
+
+                              {profile.avatar_url ? (
+                                <img
+                                  src={
+                                    profile.avatar_url
+                                  }
+                                  alt=""
+                                  className="h-11 w-11 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-violet-600 to-fuchsia-600 font-bold">
+                                  {initials}
+                                </div>
+                              )}
+
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-bold">
+                                  {profile.full_name ||
+                                    profile.username ||
+                                    "Nikelink user"}
+                                </p>
+
+                                <p className="text-xs text-white/30">
+                                  {formatDate(
+                                    post.created_at
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* POST CONTENT */}
+
+                            <div className="px-5 pb-5">
+                              <p className="whitespace-pre-wrap text-[15px] leading-7 text-white/85">
+                                {post.content}
+                              </p>
+                            </div>
+
+                            {/* ACTIONS */}
+
+                            <div className="border-t border-white/10 px-3 py-2">
+
+                              <div className="flex items-center gap-1">
+
+                                <button
+                                  onClick={() =>
+                                    togglePublicLike(
+                                      post.id
+                                    )
+                                  }
+                                  className={`flex items-center gap-2 rounded-full px-3 py-2 text-sm transition ${
+                                    userLiked
+                                      ? "bg-pink-500/10 text-pink-400"
+                                      : "text-white/50 hover:bg-white/5 hover:text-pink-400"
+                                  }`}
+                                >
+                                  <span className="text-lg">
+                                    {userLiked
+                                      ? "❤️"
+                                      : "♡"}
+                                  </span>
+
+                                  <span>
+                                    {
+                                      postLikes.length
+                                    }
+                                  </span>
+                                </button>
+
+                                <button
+                                  onClick={() =>
+                                    setOpenComments(
+                                      (current) => ({
+                                        ...current,
+                                        [post.id]:
+                                          !current[
+                                            post.id
+                                          ],
+                                      })
+                                    }
+                                  }
+                                  className="flex items-center gap-2 rounded-full px-3 py-2 text-sm text-white/50 transition hover:bg-white/5 hover:text-blue-400"
+                                >
+                                  <span className="text-lg">
+                                    💬
+                                  </span>
+
+                                  <span>
+                                    {
+                                      postComments.length
+                                    }
+                                  </span>
+                                </button>
+
+                              </div>
+                            </div>
+
+                            {/* COMMENTS */}
+
+                            {openComments[
+                              post.id
+                            ] && (
+                              <div className="border-t border-white/10 px-5 pb-5 pt-4">
+
+                                <div className="space-y-3">
+
+                                  {postComments.length ===
+                                  0 ? (
+                                    <p className="py-2 text-center text-xs text-white/30">
+                                      No comments yet.
+                                    </p>
+                                  ) : (
+                                    postComments.map(
+                                      (
+                                        comment
+                                      ) => (
+                                        <div
+                                          key={
+                                            comment.id
+                                          }
+                                          className="flex gap-3"
+                                        >
+                                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 text-xs font-bold">
+                                            N
+                                          </div>
+
+                                          <div className="min-w-0 flex-1 rounded-2xl bg-white/[0.05] px-3 py-2">
+                                            <p className="text-xs font-semibold">
+                                              Nikelink user
+                                            </p>
+
+                                            <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-white/70">
+                                              {
+                                                comment.content
+                                              }
+                                            </p>
+
+                                            <p className="mt-1 text-[10px] text-white/25">
+                                              {formatDate(
+                                                comment.created_at
+                                              )}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      )
+                                    )
+                                  )}
+                                </div>
+
+                                {/* COMMENT INPUT */}
+
+                                <div className="mt-4 flex gap-2">
+
+                                  <input
+                                    value={
+                                      commentText[
+                                        post.id
+                                      ] ||
+                                      ""
+                                    }
+                                    onChange={(
+                                      e
+                                    ) =>
+                                      setCommentText(
+                                        (
+                                          current
+                                        ) => ({
+                                          ...current,
+                                          [post.id]:
+                                            e
+                                              .target
+                                              .value,
+                                        })
+                                      )
+                                    }
+                                    onKeyDown={(
+                                      e
+                                    ) => {
+                                      if (
+                                        e.key ===
+                                          "Enter" &&
+                                        !e.shiftKey
+                                      ) {
+                                        e.preventDefault();
+
+                                        if (
+                                          (
+                                            commentText[
+                                              post.id
+                                            ] ||
+                                            ""
+                                          ).trim()
+                                        ) {
+                                          submitPublicComment(
+                                            post.id
+                                          );
+                                        }
+                                      }
+                                    }}
+                                    placeholder="Write a comment..."
+                                    maxLength={500}
+                                    className="min-w-0 flex-1 rounded-full border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none placeholder:text-white/20 focus:border-blue-500/40"
+                                  />
+
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      submitPublicComment(
+                                        post.id
+                                      )
+                                    }
+                                    disabled={
+                                      commentingPost ===
+                                        post.id ||
+                                      !(
+                                        commentText[
+                                          post.id
+                                        ] ||
+                                        ""
+                                      ).trim()
+                                    }
+                                    className="rounded-full bg-blue-600 px-4 py-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-30"
+                                  >
+                                    {commentingPost ===
+                                    post.id
+                                      ? "..."
+                                      : "Send"}
+                                  </button>
+
+                                </div>
+                              </div>
+                            )}
+                          </article>
+                        );
+                      }
+                    )}
+
+                  </div>
+                )}
+              </section>
+            </>
+          )}
+        </div>
+
+        {/* MOBILE NAVIGATION */}
+
+        <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/[0.08] bg-[#050816]/90 backdrop-blur-2xl sm:hidden">
+
+          <div className="mx-auto flex max-w-md items-center justify-around px-2 py-2.5">
+
+            <button
+              onClick={() =>
+                router.push(
+                  "/feed"
+                )
+              }
+              className="flex min-w-[62px] flex-col items-center gap-1 rounded-xl px-3 py-1.5 text-white/40 transition hover:bg-white/5 hover:text-white"
+            >
+              <span className="text-[20px] leading-none">
+                ⌂
+              </span>
+
+              <span className="text-[10px] font-semibold">
+                Home
+              </span>
+            </button>
+
+            <button
+              onClick={() =>
+                router.push(
+                  "/discover"
+                )
+              }
+              className="flex min-w-[62px] flex-col items-center gap-1 rounded-xl px-3 py-1.5 text-white/40 transition hover:bg-white/5 hover:text-white"
+            >
+              <span className="text-[19px] leading-none">
+                ⌕
+              </span>
+
+              <span className="text-[10px] font-semibold">
+                Discover
+              </span>
+            </button>
+
+            <button
+              onClick={() =>
+                router.push(
+                  "/communities"
+                )
+              }
+              className="flex min-w-[62px] flex-col items-center gap-1 rounded-xl px-3 py-1.5 text-white/40 transition hover:bg-white/5 hover:text-white"
+            >
+              <span className="text-[18px] leading-none">
+                👥
+              </span>
+
+              <span className="text-[10px] font-semibold">
+                Community
+              </span>
+            </button>
+
+            <button
+              onClick={() =>
+                router.push(
+                  "/messages"
+                )
+              }
+              className="flex min-w-[62px] flex-col items-center gap-1 rounded-xl px-3 py-1.5 text-white/40 transition hover:bg-white/5 hover:text-white"
+            >
+              <span className="text-[18px] leading-none">
+                💬
+              </span>
+
+              <span className="text-[10px] font-semibold">
+                Messages
+              </span>
+            </button>
+
+            <button
+              onClick={() =>
+                router.push(
+                  "/profile"
+                )
+              }
+              className="flex min-w-[62px] flex-col items-center gap-1 rounded-xl bg-blue-500/10 px-3 py-1.5 text-blue-400"
+            >
+              <span className="text-[18px] leading-none">
+                ●
+              </span>
+
+              <span className="text-[10px] font-semibold">
+                Profile
+              </span>
+            </button>
+
+          </div>
+        </nav>
+      </main>
+    );
+  }
+
+  /*
+   * OWN PROFILE VIEW
+   */
 
   return (
     <main className="min-h-screen bg-[#050816] pb-24 text-white sm:pb-10">
@@ -489,7 +2113,9 @@ export default function ProfilePage() {
 
           <button
             onClick={() =>
-              router.push("/feed")
+              router.push(
+                "/feed"
+              )
             }
             className="flex items-center gap-3"
           >
@@ -534,11 +2160,10 @@ export default function ProfilePage() {
             >
               Sign out
             </button>
+
           </div>
         </div>
       </header>
-
-      {/* MAIN */}
 
       <div className="relative mx-auto max-w-5xl px-5 pt-7 sm:px-8 sm:pt-10">
 
@@ -556,8 +2181,6 @@ export default function ProfilePage() {
 
             <div className="flex min-w-0 items-center gap-5">
 
-              {/* AVATAR */}
-
               <div className="relative shrink-0">
 
                 <button
@@ -571,6 +2194,7 @@ export default function ProfilePage() {
                   className="group relative block"
                   aria-label="Change profile picture"
                 >
+
                   {avatarUrl ? (
                     <img
                       src={avatarUrl}
@@ -594,16 +2218,17 @@ export default function ProfilePage() {
                       <div className="h-7 w-7 animate-spin rounded-full border-2 border-white/20 border-t-white" />
                     </div>
                   )}
-                </button>
 
-                {/* ONLINE */}
+                </button>
 
                 <div className="absolute -bottom-2 -right-2 flex h-7 w-7 items-center justify-center rounded-full border-4 border-[#080b1c] bg-emerald-500">
                   <span className="h-2 w-2 rounded-full bg-white" />
                 </div>
 
                 <input
-                  ref={fileInputRef}
+                  ref={
+                    fileInputRef
+                  }
                   type="file"
                   accept="image/*"
                   onChange={
@@ -619,543 +2244,13 @@ export default function ProfilePage() {
                   Your profile
                 </p>
 
-                <h1 className="truncate text-2xl font-black tracking-tight sm:text-3xl">
-                  {fullName ||
-                    "Your name"}
-                </h1>
-
-                <p className="mt-1 truncate text-sm text-white/40">
-                  @{username ||
-                    "username"}
-                </p>
-
-                {country && (
-                  <p className="mt-2 text-sm text-white/45">
-                    🌍 {country}
-                  </p>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    fileInputRef.current?.click()
-                  }
-                  disabled={
-                    uploadingAvatar
-                  }
-                  className="mt-3 text-xs font-semibold text-blue-400 transition hover:text-blue-300 disabled:opacity-50"
-                >
-                  {uploadingAvatar
-                    ? "Uploading..."
-                    : avatarUrl
-                    ? "Change profile picture"
-                    : "Add profile picture"}
-                </button>
-              </div>
-            </div>
-
-            {/* COMPLETION */}
-
-            <div className="w-full rounded-2xl border border-white/[0.06] bg-black/10 p-4 sm:w-52">
-
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-xs font-semibold text-white/40">
-                  Profile completion
-                </span>
-
-                <span className="text-xs font-bold text-blue-400">
-                  {completion}%
-                </span>
-              </div>
-
-              <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-blue-500 via-violet-500 to-fuchsia-500 transition-all duration-500"
-                  style={{
-                    width: `${completion}%`,
-                  }}
-                />
-              </div>
-
-              <p className="mt-2 text-[10px] text-white/25">
-                Complete your profile to help people connect with you.
-              </p>
-            </div>
-          </div>
-
-          {/* BIO */}
-
-          {bio && (
-            <div className="relative mt-7 border-t border-white/[0.07] pt-6">
-              <p className="max-w-3xl text-sm leading-7 text-white/55">
-                {bio}
-              </p>
-            </div>
-          )}
-
-          {/* INTERESTS */}
-
-          {interests.length >
-            0 && (
-            <div className="relative mt-5 flex flex-wrap gap-2">
-              {interests.map(
-                (interest) => (
-                  <span
-                    key={interest}
-                    className="rounded-full border border-blue-400/15 bg-blue-500/10 px-3 py-1.5 text-xs font-semibold text-blue-300"
-                  >
-                    {interest}
-                  </span>
-                )
-              )}
-            </div>
-          )}
-        </section>
-
-        {/* SOCIAL STATS */}
-
-        <section className="mt-6 grid grid-cols-3 gap-3 sm:gap-5">
-
-          {/* CONNECTIONS */}
-
-          <button
-            type="button"
-            onClick={() =>
-              router.push(
-                "/discover"
-              )
-            }
-            className="group rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-center shadow-xl shadow-black/10 transition hover:border-violet-500/30 hover:bg-white/[0.055] sm:p-5"
-          >
-            <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-violet-500/10 text-xl transition group-hover:scale-105">
-              👥
-            </div>
-
-            <p className="mt-3 text-xl font-black sm:text-2xl">
-              {statsLoading ? (
-                <span className="inline-block h-6 w-8 animate-pulse rounded bg-white/10" />
-              ) : (
-                connectionCount
-              )}
-            </p>
-
-            <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-white/35 sm:text-xs">
-              Connections
-            </p>
-          </button>
-
-                  {/* POSTS */}
-
-          <button
-            type="button"
-            onClick={() =>
-              router.push("/feed")
-            }
-            className="group rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-center shadow-xl shadow-black/10 transition hover:border-blue-500/30 hover:bg-white/[0.055] sm:p-5"
-          >
-            <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 text-xl transition group-hover:scale-105">
-              📝
-            </div>
-
-            <p className="mt-3 text-xl font-black sm:text-2xl">
-              {statsLoading ? (
-                <span className="inline-block h-6 w-8 animate-pulse rounded bg-white/10" />
-              ) : (
-                postCount
-              )}
-            </p>
-
-            <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-white/35 sm:text-xs">
-              Posts
-            </p>
-          </button>
-
-          {/* COMMUNITIES */}
-
-          <button
-            type="button"
-            onClick={() =>
-              router.push("/communities")
-            }
-            className="group rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-center shadow-xl shadow-black/10 transition hover:border-cyan-500/30 hover:bg-white/[0.055] sm:p-5"
-          >
-            <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-500/10 text-xl transition group-hover:scale-105">
-              🌍
-            </div>
-
-            <p className="mt-3 text-xl font-black sm:text-2xl">
-              {statsLoading ? (
-                <span className="inline-block h-6 w-8 animate-pulse rounded bg-white/10" />
-              ) : (
-                communityCount
-              )}
-            </p>
-
-            <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-white/35 sm:text-xs">
-              Communities
-            </p>
-          </button>
-        </section>
-
-        {/* EDIT PROFILE */}
-
-        <section className="mt-9">
-
-          <div className="mb-5">
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-400">
-              Profile settings
-            </p>
-
-            <h2 className="mt-2 text-2xl font-black tracking-tight">
-              Edit your profile
-            </h2>
-
-            <p className="mt-2 max-w-xl text-sm leading-6 text-white/40">
-              Keep your profile updated so people know who they are connecting with.
-            </p>
-          </div>
-
-          <form
-            onSubmit={handleSave}
-            className="rounded-[2rem] border border-white/10 bg-white/[0.035] p-5 shadow-2xl shadow-black/20 sm:p-8"
-          >
-
-            {/* EMAIL */}
-
-            <div className="mb-7">
-              <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.16em] text-white/40">
-                Email
-              </label>
-
-              <div className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-black/20 px-4 py-3.5 text-sm text-white/35">
-                <span className="text-base">
-                  ✉
-                </span>
-
-                <span className="truncate">
-                  {email}
-                </span>
-
-                <span className="ml-auto shrink-0 rounded-full bg-emerald-500/10 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-emerald-400">
-                  Verified
-                </span>
-              </div>
-            </div>
-
-            {/* NAME + USERNAME */}
-
-            <div className="grid gap-6 sm:grid-cols-2">
-
-              <div>
-                <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.16em] text-white/40">
-                  Full name
-                </label>
-
-                <input
-                  type="text"
-                  required
-                  value={fullName}
-                  onChange={(e) =>
-                    setFullName(
-                      e.target.value
-                    )
-                  }
-                  placeholder="Your full name"
-                  className="w-full rounded-xl border border-white/10 bg-[#050816] px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/10"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.16em] text-white/40">
-                  Username
-                </label>
-
-                <div className="flex rounded-xl border border-white/10 bg-[#050816] focus-within:border-blue-500/60">
-
-                  <span className="flex items-center pl-4 text-white/25">
-                    @
-                  </span>
-
-                  <input
-                    type="text"
-                    required
-                    minLength={3}
-                    value={username}
-                    onChange={(e) =>
-                      setUsername(
-                        e.target.value
-                          .toLowerCase()
-                          .replace(
-                            /[^a-z0-9_]/g,
-                            ""
-                          )
-                      )
-                    }
-                    placeholder="username"
-                    className="w-full bg-transparent px-2 py-3.5 text-sm text-white outline-none placeholder:text-white/20"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* COUNTRY + AGE */}
-
-            <div className="mt-6 grid gap-6 sm:grid-cols-2">
-
-              <div>
-                <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.16em] text-white/40">
-                  Country
-                </label>
-
-                <input
-                  type="text"
-                  value={country}
-                  onChange={(e) =>
-                    setCountry(
-                      e.target.value
-                    )
-                  }
-                  placeholder="e.g. Nigeria"
-                  className="w-full rounded-xl border border-white/10 bg-[#050816] px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/10"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.16em] text-white/40">
-                  Age group
-                </label>
-
-                <select
-                  value={ageGroup}
-                  onChange={(e) =>
-                    setAgeGroup(
-                      e.target.value
-                    )
-                  }
-                  className="w-full rounded-xl border border-white/10 bg-[#050816] px-4 py-3.5 text-sm text-white outline-none focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/10"
-                >
-                  <option value="">
-                    Select age group
-                  </option>
-
-                  <option value="18-24">
-                    18–24
-                  </option>
-
-                  <option value="25-34">
-                    25–34
-                  </option>
-
-                  <option value="35-44">
-                    35–44
-                  </option>
-
-                  <option value="45-54">
-                    45–54
-                  </option>
-
-                  <option value="55+">
-                    55+
-                  </option>
-                </select>
-              </div>
-            </div>
-
-            {/* BIO */}
-
-            <div className="mt-6">
-
-              <div className="mb-2 flex items-center justify-between">
-
-                <label className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/40">
-                  Bio
-                </label>
-
-                <span className="text-xs text-white/20">
-                  {bio.length}/300
-                </span>
-              </div>
-
-              <textarea
-                value={bio}
-                onChange={(e) =>
-                  setBio(
-                    e.target.value
-                  )
-                }
-                placeholder="Tell people a little about yourself..."
-                rows={4}
-                maxLength={300}
-                className="w-full resize-none rounded-xl border border-white/10 bg-[#050816] px-4 py-3.5 text-sm leading-6 text-white outline-none transition placeholder:text-white/20 focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/10"
-              />
-            </div>
-
-            {/* INTERESTS */}
-
-            <div className="mt-7">
-
-              <label className="mb-3 block text-[11px] font-bold uppercase tracking-[0.16em] text-white/40">
-                Your interests
-              </label>
-
-              <div className="flex flex-wrap gap-2">
-
-                {interestOptions.map(
-                  (interest) => {
-                    const selected =
-                      interests.includes(
-                        interest
-                      );
-
-                    return (
-                      <button
-                        key={interest}
-                        type="button"
-                        onClick={() =>
-                          toggleInterest(
-                            interest
-                          )
-                        }
-                        className={`rounded-full border px-3.5 py-2 text-xs font-semibold transition active:scale-95 ${
-                          selected
-                            ? "border-blue-400/30 bg-blue-500 text-white shadow-lg shadow-blue-500/10"
-                            : "border-white/10 bg-white/[0.025] text-white/45 hover:border-white/20 hover:bg-white/[0.05] hover:text-white"
-                        }`}
-                      >
-                        {selected
-                          ? "✓ "
-                          : ""}
-                        {interest}
-                      </button>
-                    );
-                  }
-                )}
-              </div>
-            </div>
-
-            {/* SAVE */}
-
-            <div className="mt-8 border-t border-white/[0.07] pt-6">
-
-              <button
-                type="submit"
-                disabled={saving}
-                className="w-full rounded-xl bg-gradient-to-r from-blue-600 via-violet-600 to-fuchsia-600 px-5 py-4 text-sm font-bold shadow-xl shadow-blue-600/10 transition hover:brightness-110 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {saving
-                  ? "Saving profile..."
-                  : "Save changes"}
-              </button>
-
-              {message && (
-                <div
-                  className={`mt-4 rounded-xl border px-4 py-3 text-center text-sm ${
-                    message ===
-                      "Profile picture updated successfully." ||
-                    message ===
-                      "Profile saved successfully."
-                      ? "border-emerald-400/10 bg-emerald-500/5 text-emerald-400"
-                      : "border-white/[0.08] bg-white/[0.03] text-white/55"
-                  }`}
-                >
-                  {message}
-                </div>
-              )}
-            </div>
-          </form>
-        </section>
-
-        {/* FOOTER */}
-
-        <div className="py-10 text-center">
-          <p className="text-xs text-white/20">
-            Nikelink · Connect. Share. Belong.
-          </p>
-        </div>
-      </div>
-
-      {/* MOBILE NAVIGATION */}
-
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/[0.08] bg-[#050816]/90 backdrop-blur-2xl sm:hidden">
-
-        <div className="mx-auto flex max-w-md items-center justify-around px-2 py-2.5">
-
-          <button
-            onClick={() =>
-              router.push("/feed")
-            }
-            className="flex min-w-[62px] flex-col items-center gap-1 rounded-xl px-3 py-1.5 text-white/40 transition hover:bg-white/5 hover:text-white"
-          >
-            <span className="text-[20px] leading-none">
-              ⌂
-            </span>
-
-            <span className="text-[10px] font-semibold">
-              Home
-            </span>
-          </button>
-
-          <button
-            onClick={() =>
-              router.push("/discover")
-            }
-            className="flex min-w-[62px] flex-col items-center gap-1 rounded-xl px-3 py-1.5 text-white/40 transition hover:bg-white/5 hover:text-white"
-          >
-            <span className="text-[19px] leading-none">
-              ⌕
-            </span>
-
-            <span className="text-[10px] font-semibold">
-              Discover
-            </span>
-          </button>
-
-          <button
-            onClick={() =>
-              router.push("/communities")
-            }
-            className="flex min-w-[62px] flex-col items-center gap-1 rounded-xl px-3 py-1.5 text-white/40 transition hover:bg-white/5 hover:text-white"
-          >
-            <span className="text-[18px] leading-none">
-              👥
-            </span>
-
-            <span className="text-[10px] font-semibold">
-              Community
-            </span>
-          </button>
-
-          <button
-            onClick={() =>
-              router.push("/messages")
-            }
-            className="flex min-w-[62px] flex-col items-center gap-1 rounded-xl px-3 py-1.5 text-white/40 transition hover:bg-white/5 hover:text-white"
-          >
-            <span className="text-[18px] leading-none">
-              💬
-            </span>
-
-            <span className="text-[10px] font-semibold">
-              Messages
-            </span>
-          </button>
-
-          <button
-            onClick={() =>
-              router.push("/profile")
-            }
-            className="flex min-w-[62px] flex-col items-center gap-1 rounded-xl bg-blue-500/10 px-3 py-1.5 text-blue-400"
-          >
-            <span className="text-[18px] leading-none">
-              ●
-            </span>
-
-            <span className="text-[10px] font-semibold">
-              Profile
-            </span>
-          </button>
-        </div>
-      </nav>
-    </main>
-  );
-}
+                <h1 className="truncate text-2xl font-black tracking-tight 
+                                    profile.avatar_url
+                                  }
+                                  alt=""
+                                  className="h-11 w-11 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-violet-600 to-fuchsia-600 font-bold">
+                                  {initials}
+            
