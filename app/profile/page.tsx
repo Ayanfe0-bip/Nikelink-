@@ -1971,7 +1971,7 @@ export default function ProfilePage() {
                               </div>
                             )}
                           </article>
-                                                    </article>
+                              
                           );
                         })}
                   </div>
