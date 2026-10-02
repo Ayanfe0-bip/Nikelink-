@@ -27,11 +27,12 @@ const interestOptions = [
 export default function ProfilePage() {
   const router = useRouter();
 
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const fileInputRef =
+    useRef<HTMLInputElement | null>(null);
 
   const [userId, setUserId] = useState("");
   const [unreadNotifications, setUnreadNotifications] =
-  useState(0);
+    useState(0);
   const [email, setEmail] = useState("");
 
   const [fullName, setFullName] = useState("");
@@ -39,18 +40,31 @@ export default function ProfilePage() {
   const [country, setCountry] = useState("");
   const [bio, setBio] = useState("");
   const [ageGroup, setAgeGroup] = useState("");
-  const [interests, setInterests] = useState<string[]>([]);
+  const [interests, setInterests] =
+    useState<string[]>([]);
   const [avatarUrl, setAvatarUrl] = useState("");
+
+  /* SOCIAL STATS */
+  const [connectionCount, setConnectionCount] =
+    useState(0);
+  const [postCount, setPostCount] = useState(0);
+  const [communityCount, setCommunityCount] =
+    useState(0);
+  const [statsLoading, setStatsLoading] =
+    useState(true);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] =
+    useState(false);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
     async function loadProfile() {
-      const { data: userData, error: userError } =
-        await supabase.auth.getUser();
+      const {
+        data: userData,
+        error: userError,
+      } = await supabase.auth.getUser();
 
       if (userError || !userData.user) {
         router.replace("/login");
@@ -84,55 +98,140 @@ export default function ProfilePage() {
     loadProfile();
   }, [router]);
 
-useEffect(() => {
-  if (!userId) return;
+  /* LOAD SOCIAL STATS */
+  useEffect(() => {
+    if (!userId) return;
 
-  const loadUnreadNotifications = async () => {
-    const { count, error } = await supabase
-      .from("notification")
-      .select("*", {
-        count: "exact",
-        head: true,
-      })
-      .eq("user_id", userId)
-      .eq("is_read", false);
+    async function loadSocialStats() {
+      setStatsLoading(true);
 
-    if (!error) {
-      setUnreadNotifications(count || 0);
-    }
-  };
+      try {
+        const [
+          connectionsResult,
+          postsResult,
+          communitiesResult,
+        ] = await Promise.all([
+          supabase
+            .from("connection")
+            .select("id", {
+              count: "exact",
+              head: true,
+            })
+            .eq("status", "accepted")
+            .or(
+              `requester_id.eq.${userId},receiver_id.eq.${userId}`
+            ),
 
-  loadUnreadNotifications();
-}, [userId]);
-useEffect(() => {
-  if (!userId) return;
+          supabase
+            .from("posts")
+            .select("id", {
+              count: "exact",
+              head: true,
+            })
+            .eq("user_id", userId),
 
-  const channel = supabase
-    .channel(`profile-notifications-${userId}`)
-    .on(
-      "postgres_changes",
-      {
-        event: "INSERT",
-        schema: "public",
-        table: "notification",
-        filter: `user_id=eq.${userId}`,
-      },
-      () => {
-        setUnreadNotifications(
-          (current) => current + 1
+          supabase
+            .from("community_members")
+            .select("id", {
+              count: "exact",
+              head: true,
+            })
+            .eq("user_id", userId),
+        ]);
+
+        if (!connectionsResult.error) {
+          setConnectionCount(
+            connectionsResult.count || 0
+          );
+        }
+
+        if (!postsResult.error) {
+          setPostCount(
+            postsResult.count || 0
+          );
+        }
+
+        if (!communitiesResult.error) {
+          setCommunityCount(
+            communitiesResult.count || 0
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Social stats error:",
+          error
         );
       }
-    )
-    .subscribe();
 
-  return () => {
-    supabase.removeChannel(channel);
-  };
-}, [userId]);
-  function toggleInterest(interest: string) {
+      setStatsLoading(false);
+    }
+
+    loadSocialStats();
+  }, [userId]);
+
+  /* UNREAD NOTIFICATIONS */
+  useEffect(() => {
+    if (!userId) return;
+
+    const loadUnreadNotifications =
+      async () => {
+        const { count, error } =
+          await supabase
+            .from("notification")
+            .select("*", {
+              count: "exact",
+              head: true,
+            })
+            .eq("user_id", userId)
+            .eq("is_read", false);
+
+        if (!error) {
+          setUnreadNotifications(
+            count || 0
+          );
+        }
+      };
+
+    loadUnreadNotifications();
+  }, [userId]);
+
+  /* REALTIME NOTIFICATIONS */
+  useEffect(() => {
+    if (!userId) return;
+
+    const channel = supabase
+      .channel(
+        `profile-notifications-${userId}`
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notification",
+          filter: `user_id=eq.${userId}`,
+        },
+        () => {
+          setUnreadNotifications(
+            (current) => current + 1
+          );
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId]);
+
+  function toggleInterest(
+    interest: string
+  ) {
     setInterests((current) =>
       current.includes(interest)
-        ? current.filter((item) => item !== interest)
+        ? current.filter(
+            (item) => item !== interest
+          )
         : [...current, interest]
     );
   }
@@ -140,21 +239,27 @@ useEffect(() => {
   async function handleAvatarChange(
     event: React.ChangeEvent<HTMLInputElement>
   ) {
-    const file = event.target.files?.[0];
+    const file =
+      event.target.files?.[0];
 
     if (!file || !userId) return;
 
     setMessage("");
 
-    // Basic validation
     if (!file.type.startsWith("image/")) {
-      setMessage("Please select an image file.");
+      setMessage(
+        "Please select an image file."
+      );
       return;
     }
 
-    // 5MB maximum
-    if (file.size > 5 * 1024 * 1024) {
-      setMessage("Profile picture must be smaller than 5MB.");
+    if (
+      file.size >
+      5 * 1024 * 1024
+    ) {
+      setMessage(
+        "Profile picture must be smaller than 5MB."
+      );
       return;
     }
 
@@ -162,50 +267,78 @@ useEffect(() => {
 
     try {
       const fileExtension =
-        file.name.split(".").pop()?.toLowerCase() || "jpg";
+        file.name
+          .split(".")
+          .pop()
+          ?.toLowerCase() ||
+        "jpg";
 
       const fileName = `${Date.now()}-${Math.random()
         .toString(36)
-        .substring(2, 10)}.${fileExtension}`;
+        .substring(
+          2,
+          10
+        )}.${fileExtension}`;
 
       const filePath = `${userId}/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
+      const {
+        error: uploadError,
+      } = await supabase.storage
         .from("avatars")
-        .upload(filePath, file, {
-          cacheControl: "3600",
-          upsert: false,
-          contentType: file.type,
-        });
+        .upload(
+          filePath,
+          file,
+          {
+            cacheControl: "3600",
+            upsert: false,
+            contentType:
+              file.type,
+          }
+        );
 
       if (uploadError) {
-        setMessage(uploadError.message);
+        setMessage(
+          uploadError.message
+        );
         setUploadingAvatar(false);
         return;
       }
 
-      const { data: publicUrlData } = supabase.storage
+      const {
+        data: publicUrlData,
+      } = supabase.storage
         .from("avatars")
         .getPublicUrl(filePath);
 
-      const newAvatarUrl = publicUrlData.publicUrl;
+      const newAvatarUrl =
+        publicUrlData.publicUrl;
 
-      const { error: profileError } = await supabase
+      const {
+        error: profileError,
+      } = await supabase
         .from("profiles")
         .update({
-          avatar_url: newAvatarUrl,
-          updated_at: new Date().toISOString(),
+          avatar_url:
+            newAvatarUrl,
+          updated_at:
+            new Date().toISOString(),
         })
         .eq("id", userId);
 
       if (profileError) {
-        setMessage(profileError.message);
+        setMessage(
+          profileError.message
+        );
         setUploadingAvatar(false);
         return;
       }
 
       setAvatarUrl(newAvatarUrl);
-      setMessage("Profile picture updated successfully.");
+
+      setMessage(
+        "Profile picture updated successfully."
+      );
     } catch (error) {
       setMessage(
         error instanceof Error
@@ -216,13 +349,15 @@ useEffect(() => {
 
     setUploadingAvatar(false);
 
-    // Allows selecting the same image again later.
     if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+      fileInputRef.current.value =
+        "";
     }
   }
 
-  async function handleSave(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSave(
+    e: React.FormEvent<HTMLFormElement>
+  ) {
     e.preventDefault();
 
     if (!userId) return;
@@ -230,27 +365,44 @@ useEffect(() => {
     setSaving(true);
     setMessage("");
 
-    const cleanUsername = username.trim().toLowerCase();
+    const cleanUsername =
+      username
+        .trim()
+        .toLowerCase();
 
-    const { error } = await supabase.from("profiles").upsert({
-      id: userId,
-      full_name: fullName.trim(),
-      username: cleanUsername,
-      country: country.trim(),
-      bio: bio.trim(),
-      age_group: ageGroup,
-      interests,
-      avatar_url: avatarUrl.trim() || null,
-      updated_at: new Date().toISOString(),
-    });
+    const { error } =
+      await supabase
+        .from("profiles")
+        .upsert({
+          id: userId,
+          full_name:
+            fullName.trim(),
+          username:
+            cleanUsername,
+          country:
+            country.trim(),
+          bio: bio.trim(),
+          age_group:
+            ageGroup,
+          interests,
+          avatar_url:
+            avatarUrl.trim() ||
+            null,
+          updated_at:
+            new Date().toISOString(),
+        });
 
     if (error) {
-      setMessage(error.message);
+      setMessage(
+        error.message
+      );
       setSaving(false);
       return;
     }
 
-    setMessage("Profile saved successfully.");
+    setMessage(
+      "Profile saved successfully."
+    );
 
     setTimeout(() => {
       router.refresh();
@@ -265,14 +417,19 @@ useEffect(() => {
   }
 
   const initials = useMemo(() => {
-    const name = fullName.trim();
+    const name =
+      fullName.trim();
 
     if (!name) return "N";
 
     return name
       .split(/\s+/)
       .slice(0, 2)
-      .map((word) => word.charAt(0).toUpperCase())
+      .map((word) =>
+        word
+          .charAt(0)
+          .toUpperCase()
+      )
       .join("");
   }, [fullName]);
 
@@ -281,14 +438,22 @@ useEffect(() => {
     username.trim(),
     country.trim(),
     bio.trim(),
-    interests.length > 0 ? "yes" : "",
+    interests.length > 0
+      ? "yes"
+      : "",
   ];
 
-  const completedItems = completionItems.filter(Boolean).length;
+  const completedItems =
+    completionItems.filter(
+      Boolean
+    ).length;
 
-  const completion = Math.round(
-    (completedItems / completionItems.length) * 100
-  );
+  const completion =
+    Math.round(
+      (completedItems /
+        completionItems.length) *
+        100
+    );
 
   if (loading) {
     return (
@@ -323,7 +488,9 @@ useEffect(() => {
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-5 sm:px-8">
 
           <button
-            onClick={() => router.push("/feed")}
+            onClick={() =>
+              router.push("/feed")
+            }
             className="flex items-center gap-3"
           >
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 via-violet-600 to-fuchsia-600 text-sm font-black shadow-lg shadow-blue-500/20">
@@ -336,34 +503,40 @@ useEffect(() => {
           </button>
 
           <div className="flex items-center gap-2">
-  <button
-    onClick={() => router.push("/notifications")}
-    aria-label="Notifications"
-    className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-lg transition hover:bg-white/10"
-  >
-    🔔
 
-    {unreadNotifications > 0 && (
-      <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-pink-500 px-1 text-[10px] font-black text-white shadow-lg shadow-pink-500/30">
-        {unreadNotifications > 99
-          ? "99+"
-          : unreadNotifications}
-      </span>
-    )}
-  </button>
+            <button
+              onClick={() =>
+                router.push(
+                  "/notifications"
+                )
+              }
+              aria-label="Notifications"
+              className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-lg transition hover:bg-white/10"
+            >
+              🔔
 
-    <button
-    onClick={handleSignOut}
-    className="rounded-xl border border-white/10 px-4 py-2 text-xs font-semibold text-white/55 transition hover:border-white/20 hover:bg-white/5 hover:text-white"
-  >
-    Sign out
-  </button>
-</div>
+              {unreadNotifications >
+                0 && (
+                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-pink-500 px-1 text-[10px] font-black text-white shadow-lg shadow-pink-500/30">
+                  {unreadNotifications >
+                  99
+                    ? "99+"
+                    : unreadNotifications}
+                </span>
+              )}
+            </button>
 
-</div>
-</header>
-
-      {/* MAIN */}
+            <button
+              onClick={
+                handleSignOut
+              }
+              className="rounded-xl border border-white/10 px-4 py-2 text-xs font-semibold text-white/55 transition hover:border-white/20 hover:bg-white/5 hover:text-white"
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      </header>
 
       {/* MAIN */}
 
@@ -389,8 +562,12 @@ useEffect(() => {
 
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadingAvatar}
+                  onClick={() =>
+                    fileInputRef.current?.click()
+                  }
+                  disabled={
+                    uploadingAvatar
+                  }
                   className="group relative block"
                   aria-label="Change profile picture"
                 >
@@ -406,15 +583,11 @@ useEffect(() => {
                     </div>
                   )}
 
-                  {/* HOVER OVERLAY */}
-
                   <div className="absolute inset-0 flex items-center justify-center rounded-[1.7rem] bg-black/0 transition group-hover:bg-black/50">
                     <span className="text-xl opacity-0 transition group-hover:opacity-100">
                       📷
                     </span>
                   </div>
-
-                  {/* UPLOAD INDICATOR */}
 
                   {uploadingAvatar && (
                     <div className="absolute inset-0 flex items-center justify-center rounded-[1.7rem] bg-black/70">
@@ -429,13 +602,13 @@ useEffect(() => {
                   <span className="h-2 w-2 rounded-full bg-white" />
                 </div>
 
-                {/* HIDDEN FILE INPUT */}
-
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
-                  onChange={handleAvatarChange}
+                  onChange={
+                    handleAvatarChange
+                  }
                   className="hidden"
                 />
               </div>
@@ -447,11 +620,13 @@ useEffect(() => {
                 </p>
 
                 <h1 className="truncate text-2xl font-black tracking-tight sm:text-3xl">
-                  {fullName || "Your name"}
+                  {fullName ||
+                    "Your name"}
                 </h1>
 
                 <p className="mt-1 truncate text-sm text-white/40">
-                  @{username || "username"}
+                  @{username ||
+                    "username"}
                 </p>
 
                 {country && (
@@ -462,8 +637,12 @@ useEffect(() => {
 
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadingAvatar}
+                  onClick={() =>
+                    fileInputRef.current?.click()
+                  }
+                  disabled={
+                    uploadingAvatar
+                  }
                   className="mt-3 text-xs font-semibold text-blue-400 transition hover:text-blue-300 disabled:opacity-50"
                 >
                   {uploadingAvatar
@@ -492,7 +671,9 @@ useEffect(() => {
               <div className="h-2 overflow-hidden rounded-full bg-white/10">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-blue-500 via-violet-500 to-fuchsia-500 transition-all duration-500"
-                  style={{ width: `${completion}%` }}
+                  style={{
+                    width: `${completion}%`,
+                  }}
                 />
               </div>
 
@@ -514,18 +695,106 @@ useEffect(() => {
 
           {/* INTERESTS */}
 
-          {interests.length > 0 && (
+          {interests.length >
+            0 && (
             <div className="relative mt-5 flex flex-wrap gap-2">
-              {interests.map((interest) => (
-                <span
-                  key={interest}
-                  className="rounded-full border border-blue-400/15 bg-blue-500/10 px-3 py-1.5 text-xs font-semibold text-blue-300"
-                >
-                  {interest}
-                </span>
-              ))}
+              {interests.map(
+                (interest) => (
+                  <span
+                    key={interest}
+                    className="rounded-full border border-blue-400/15 bg-blue-500/10 px-3 py-1.5 text-xs font-semibold text-blue-300"
+                  >
+                    {interest}
+                  </span>
+                )
+              )}
             </div>
           )}
+        </section>
+
+        {/* SOCIAL STATS */}
+
+        <section className="mt-6 grid grid-cols-3 gap-3 sm:gap-5">
+
+          {/* CONNECTIONS */}
+
+          <button
+            type="button"
+            onClick={() =>
+              router.push(
+                "/discover"
+              )
+            }
+            className="group rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-center shadow-xl shadow-black/10 transition hover:border-violet-500/30 hover:bg-white/[0.055] sm:p-5"
+          >
+            <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-violet-500/10 text-xl transition group-hover:scale-105">
+              👥
+            </div>
+
+            <p className="mt-3 text-xl font-black sm:text-2xl">
+              {statsLoading ? (
+                <span className="inline-block h-6 w-8 animate-pulse rounded bg-white/10" />
+              ) : (
+                connectionCount
+              )}
+            </p>
+
+            <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-white/35 sm:text-xs">
+              Connections
+            </p>
+          </button>
+
+                  {/* POSTS */}
+
+          <button
+            type="button"
+            onClick={() =>
+              router.push("/feed")
+            }
+            className="group rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-center shadow-xl shadow-black/10 transition hover:border-blue-500/30 hover:bg-white/[0.055] sm:p-5"
+          >
+            <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 text-xl transition group-hover:scale-105">
+              📝
+            </div>
+
+            <p className="mt-3 text-xl font-black sm:text-2xl">
+              {statsLoading ? (
+                <span className="inline-block h-6 w-8 animate-pulse rounded bg-white/10" />
+              ) : (
+                postCount
+              )}
+            </p>
+
+            <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-white/35 sm:text-xs">
+              Posts
+            </p>
+          </button>
+
+          {/* COMMUNITIES */}
+
+          <button
+            type="button"
+            onClick={() =>
+              router.push("/communities")
+            }
+            className="group rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-center shadow-xl shadow-black/10 transition hover:border-cyan-500/30 hover:bg-white/[0.055] sm:p-5"
+          >
+            <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-500/10 text-xl transition group-hover:scale-105">
+              🌍
+            </div>
+
+            <p className="mt-3 text-xl font-black sm:text-2xl">
+              {statsLoading ? (
+                <span className="inline-block h-6 w-8 animate-pulse rounded bg-white/10" />
+              ) : (
+                communityCount
+              )}
+            </p>
+
+            <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-white/35 sm:text-xs">
+              Communities
+            </p>
+          </button>
         </section>
 
         {/* EDIT PROFILE */}
@@ -542,8 +811,7 @@ useEffect(() => {
             </h2>
 
             <p className="mt-2 max-w-xl text-sm leading-6 text-white/40">
-              Keep your profile updated so people know who they are
-              connecting with.
+              Keep your profile updated so people know who they are connecting with.
             </p>
           </div>
 
@@ -587,7 +855,11 @@ useEffect(() => {
                   type="text"
                   required
                   value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  onChange={(e) =>
+                    setFullName(
+                      e.target.value
+                    )
+                  }
                   placeholder="Your full name"
                   className="w-full rounded-xl border border-white/10 bg-[#050816] px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/10"
                 />
@@ -613,7 +885,10 @@ useEffect(() => {
                       setUsername(
                         e.target.value
                           .toLowerCase()
-                          .replace(/[^a-z0-9_]/g, "")
+                          .replace(
+                            /[^a-z0-9_]/g,
+                            ""
+                          )
                       )
                     }
                     placeholder="username"
@@ -635,7 +910,11 @@ useEffect(() => {
                 <input
                   type="text"
                   value={country}
-                  onChange={(e) => setCountry(e.target.value)}
+                  onChange={(e) =>
+                    setCountry(
+                      e.target.value
+                    )
+                  }
                   placeholder="e.g. Nigeria"
                   className="w-full rounded-xl border border-white/10 bg-[#050816] px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/10"
                 />
@@ -648,7 +927,11 @@ useEffect(() => {
 
                 <select
                   value={ageGroup}
-                  onChange={(e) => setAgeGroup(e.target.value)}
+                  onChange={(e) =>
+                    setAgeGroup(
+                      e.target.value
+                    )
+                  }
                   className="w-full rounded-xl border border-white/10 bg-[#050816] px-4 py-3.5 text-sm text-white outline-none focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/10"
                 >
                   <option value="">
@@ -695,7 +978,11 @@ useEffect(() => {
 
               <textarea
                 value={bio}
-                onChange={(e) => setBio(e.target.value)}
+                onChange={(e) =>
+                  setBio(
+                    e.target.value
+                  )
+                }
                 placeholder="Tell people a little about yourself..."
                 rows={4}
                 maxLength={300}
@@ -713,25 +1000,36 @@ useEffect(() => {
 
               <div className="flex flex-wrap gap-2">
 
-                {interestOptions.map((interest) => {
-                  const selected = interests.includes(interest);
+                {interestOptions.map(
+                  (interest) => {
+                    const selected =
+                      interests.includes(
+                        interest
+                      );
 
-                  return (
-                    <button
-                      key={interest}
-                      type="button"
-                      onClick={() => toggleInterest(interest)}
-                      className={`rounded-full border px-3.5 py-2 text-xs font-semibold transition active:scale-95 ${
-                        selected
-                          ? "border-blue-400/30 bg-blue-500 text-white shadow-lg shadow-blue-500/10"
-                          : "border-white/10 bg-white/[0.025] text-white/45 hover:border-white/20 hover:bg-white/[0.05] hover:text-white"
-                      }`}
-                    >
-                      {selected ? "✓ " : ""}
-                      {interest}
-                    </button>
-                  );
-                })}
+                    return (
+                      <button
+                        key={interest}
+                        type="button"
+                        onClick={() =>
+                          toggleInterest(
+                            interest
+                          )
+                        }
+                        className={`rounded-full border px-3.5 py-2 text-xs font-semibold transition active:scale-95 ${
+                          selected
+                            ? "border-blue-400/30 bg-blue-500 text-white shadow-lg shadow-blue-500/10"
+                            : "border-white/10 bg-white/[0.025] text-white/45 hover:border-white/20 hover:bg-white/[0.05] hover:text-white"
+                        }`}
+                      >
+                        {selected
+                          ? "✓ "
+                          : ""}
+                        {interest}
+                      </button>
+                    );
+                  }
+                )}
               </div>
             </div>
 
@@ -753,10 +1051,9 @@ useEffect(() => {
                 <div
                   className={`mt-4 rounded-xl border px-4 py-3 text-center text-sm ${
                     message ===
-                    "Profile picture updated successfully."
-                      ? "border-emerald-400/10 bg-emerald-500/5 text-emerald-400"
-                      : message ===
-                        "Profile saved successfully."
+                      "Profile picture updated successfully." ||
+                    message ===
+                      "Profile saved successfully."
                       ? "border-emerald-400/10 bg-emerald-500/5 text-emerald-400"
                       : "border-white/[0.08] bg-white/[0.03] text-white/55"
                   }`}
@@ -784,7 +1081,9 @@ useEffect(() => {
         <div className="mx-auto flex max-w-md items-center justify-around px-2 py-2.5">
 
           <button
-            onClick={() => router.push("/feed")}
+            onClick={() =>
+              router.push("/feed")
+            }
             className="flex min-w-[62px] flex-col items-center gap-1 rounded-xl px-3 py-1.5 text-white/40 transition hover:bg-white/5 hover:text-white"
           >
             <span className="text-[20px] leading-none">
@@ -797,7 +1096,9 @@ useEffect(() => {
           </button>
 
           <button
-            onClick={() => router.push("/discover")}
+            onClick={() =>
+              router.push("/discover")
+            }
             className="flex min-w-[62px] flex-col items-center gap-1 rounded-xl px-3 py-1.5 text-white/40 transition hover:bg-white/5 hover:text-white"
           >
             <span className="text-[19px] leading-none">
@@ -810,7 +1111,9 @@ useEffect(() => {
           </button>
 
           <button
-            onClick={() => router.push("/communities")}
+            onClick={() =>
+              router.push("/communities")
+            }
             className="flex min-w-[62px] flex-col items-center gap-1 rounded-xl px-3 py-1.5 text-white/40 transition hover:bg-white/5 hover:text-white"
           >
             <span className="text-[18px] leading-none">
@@ -823,7 +1126,9 @@ useEffect(() => {
           </button>
 
           <button
-            onClick={() => router.push("/messages")}
+            onClick={() =>
+              router.push("/messages")
+            }
             className="flex min-w-[62px] flex-col items-center gap-1 rounded-xl px-3 py-1.5 text-white/40 transition hover:bg-white/5 hover:text-white"
           >
             <span className="text-[18px] leading-none">
@@ -836,7 +1141,9 @@ useEffect(() => {
           </button>
 
           <button
-            onClick={() => router.push("/profile")}
+            onClick={() =>
+              router.push("/profile")
+            }
             className="flex min-w-[62px] flex-col items-center gap-1 rounded-xl bg-blue-500/10 px-3 py-1.5 text-blue-400"
           >
             <span className="text-[18px] leading-none">
